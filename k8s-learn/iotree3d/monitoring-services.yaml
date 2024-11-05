@@ -1,0 +1,191 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: io-monitor-gui-service
+  namespace: iotree3d
+spec:
+  selector:
+    app: io-monitor-gui
+  ports:
+    - name: io-monitor-gui
+      protocol: TCP
+      port: 3200
+      targetPort: 3200
+      nodePort: 31320
+  type: NodePort
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: io-monitor-gui-deployment
+  namespace: iotree3d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: io-monitor-gui
+  template:
+    metadata:
+      labels:
+        app: io-monitor-gui
+    spec:
+      containers:
+        - name: io-monitor-gui
+          image: io-monitor-gui:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3200
+          volumeMounts:
+            - name: io-monitor-gui-pvc
+              mountPath: /var/lib/grafana
+      volumes:
+        - name: io-monitor-gui-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/io3d/monitor/gui
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: io-monitor-db-service
+  namespace: iotree3d
+spec:
+  selector:
+    app: io-monitor-db
+  ports:
+    - name: io-monitor-db
+      protocol: TCP
+      port: 3100
+      targetPort: 9090
+      nodePort: 31310
+  type: NodePort
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: io-monitor-db-deployment
+  namespace: iotree3d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: io-monitor-db
+  template:
+    metadata:
+      labels:
+        app: io-monitor-db
+    spec:
+      containers:
+        - name: io-monitor-db
+          image: io-monitor-db:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: io-monitor-db-pvc
+              mountPath: /prometheus/data
+      volumes:
+        - name: io-monitor-db-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/io3d/monitor/db
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: io-monitor-pool-service
+  namespace: iotree3d
+spec:
+  selector:
+    app: io-monitor-pool
+  ports:
+    - name: io-monitor-pool
+      protocol: TCP
+      port: 8500
+      targetPort: 8500
+      nodePort: 31850
+  type: NodePort
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: io-monitor-pool-deployment
+  namespace: iotree3d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: io-monitor-pool
+  template:
+    metadata:
+      labels:
+        app: io-monitor-pool
+    spec:
+      containers:
+        - name: io-monitor-pool
+          image: io-monitor-pool:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8500
+          env:
+            - name: CONSUL_LOCAL_CONFIG
+              value: '{"http_config": {"response_headers" : { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, OPTIONS, POST, PUT"}}}'
+          volumeMounts:
+            - name: io-monitor-pool-pvc
+              mountPath: /consul/data
+      volumes:
+        - name: io-monitor-pool-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/io3d/monitor/pool
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: io-metric-sys-service
+  namespace: iotree3d
+spec:
+  selector:
+    app: io-metric-sys
+  ports:
+    - name: io-metric-sys
+      protocol: TCP
+      port: 9100
+      targetPort: 9100
+      nodePort: 31910
+  type: NodePort          
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: io-metric-sys-deployment
+  namespace: iotree3d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: io-metric-sys
+  template:
+    metadata:
+      labels:
+        app: io-metric-sys
+    spec:
+      containers:
+        - name: io-metric-sys
+          image: io-metric-sys:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9100
+          volumeMounts:
+            - name: io-metric-sys-pvc
+              mountPath: /host:ro,rslave
+      volumes:
+        - name: io-metric-sys-pvc
+          hostPath:
+            path: /

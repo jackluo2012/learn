@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iotree3d-deployment-render
+  namespace: iotree3d
+  labels:
+    app: iotree3d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iotree3d
+  template:
+    metadata:
+      labels:
+        app: iotree3d
+    spec:
+      hostNetwork: true
+      containers:
+        - name: io-render 
+          image: io-render
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: EXECUTE
+              value: "IOUnrealShell/Binaries/Linux/IOUnrealShell"
+            - name: ARGUMENTS
+              value: '-RenderUrl="ws://192.168.110.154:8300/render?uuid=192.168.110.108_1&engineId=d11ea7f73f321c70eb1aeae4962a31ce_93be5324524d55c57548a3727f382fd9&container=true" -StreamUrl="ws://192.168.110.154:8100/stream?uuid=192.168.110.108_1&engineId=d11ea7f73f321c70eb1aeae4962a31ce_93be5324524d55c57548a3727f382fd9" -RootPath="/app/assets" -PixelStreamingID="192.168.110.108_1" -PixelStreamingWebRTCMinBitrate=15000000 -PixelStreamingWebRTCStartBitrate=15000000 -PixelStreamingWebRTCMaxBitrate=30000000 -PixelStreamingEncoderRateControl=VBR -log -LogCmds="Log LogRenderNodeConnection Verbose" -RenderOffscreen -nosound'
+          volumeMounts:
+            - name: io-render-engines-pvc
+              mountPath: /app/engine
+            - name: io-render-pvc
+              mountPath: /app/assets
+              subPath: assets
+            - name: io-render-hostpath-pvc
+              mountPath: /tmp/.X11-unix
+              subPath: .X11-unix      
+      volumes:
+        - name: io-render-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/io3d/workspace/
+        - name: io-render-engines-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/io3d/workspace/engines/d11ea7f73f321c70eb1aeae4962a31ce_93be5324524d55c57548a3727f382fd9/
+        - name: io-render-hostpath-pvc
+          hostPath:
+            path: /tmp
+            

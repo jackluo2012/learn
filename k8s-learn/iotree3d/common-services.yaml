@@ -1,0 +1,143 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: io-common-cache-service
+  namespace: iotree3d
+spec:
+  selector:
+    app: io-common-cache
+  ports:
+    - name: io-common-cache-6379
+      protocol: TCP
+      port: 6379
+      targetPort: 6379
+      nodePort: 31637
+  type: NodePort
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: io-common-cache-deployment
+  namespace: iotree3d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: io-common-cache
+  template:
+    metadata:
+      labels:
+        app: io-common-cache
+    spec:
+      containers:
+        - name: io-common-cache
+          image: io-common-cache:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - name: io-common-cache-pvc
+              mountPath: /etc/redis/redis.conf
+              subPath: redis.conf
+      volumes:
+        - name: io-common-cache-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/server/io-common-cache
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: io-common-db-service
+  namespace: iotree3d
+spec:
+  selector:
+    app: io-common-db
+  ports:
+    - name: io-common-db-5432
+      protocol: TCP
+      port: 5432
+      targetPort: 5432
+      nodePort: 31543
+  type: NodePort
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: io-common-db-deployment
+  namespace: iotree3d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: io-common-db
+  template:
+    metadata:
+      labels:
+        app: io-common-db
+    spec:
+      containers:
+        - name: io-common-db
+          image: io-common-db:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: io-common-db-pvc
+              mountPath: /data
+      volumes:
+        - name: io-common-db-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data//io3d/common/db
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: io-common-turn-service
+  namespace: iotree3d
+spec:
+  selector:
+    app: io-common-turn
+  ports:
+    - name: io-common-turn-3478
+      protocol: TCP
+      port: 3478
+      targetPort: 3478
+      nodePort: 31478
+  type: NodePort
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: io-common-turn-deployment
+  namespace: iotree3d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: io-common-turn
+  template:
+    metadata:
+      labels:
+        app: io-common-turn
+    spec:
+      containers:
+        - name: io-common-turn
+          image: io-common-turn:latest
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: io-common-turn-pvc
+              mountPath: /etc/turnserver.conf
+              subPath: turnserver.conf
+      volumes:
+        - name: io-common-turn-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/server/io-common-turn

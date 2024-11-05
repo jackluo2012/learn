@@ -1,0 +1,208 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: io-fs-master-service
+  namespace: iotree3d
+spec:
+  selector:
+    app: io-fs-master
+  ports:
+    - name: io-fs-master-9333
+      protocol: TCP
+      port: 9333
+      targetPort: 9333
+      nodePort: 30933
+    - name: io-fs-master-19333
+      protocol: TCP
+      port: 19333
+      targetPort: 19333
+      nodePort: 31933
+  type: NodePort
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: io-fs-master-deployment
+  namespace: iotree3d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: io-fs-master
+  template:
+    metadata:
+      labels:
+        app: io-fs-master
+    spec:
+      containers:
+        - name: io-fs-master
+          image: io-fs-master:v2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9333
+            - containerPort: 19333
+          volumeMounts:
+            - name: io-fs-master-pvc
+              mountPath: /data
+      volumes:
+        - name: io-fs-master-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/io3d/fs/master
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: io-fs-volume-service
+  namespace: iotree3d
+spec:
+  selector:
+    app: io-fs-volume
+  ports:
+    - name: io-fs-volume-9301
+      protocol: TCP
+      port: 9301
+      targetPort: 9301
+      nodePort: 31930
+    - name: io-fs-volume-18080
+      protocol: TCP
+      port: 18080
+      targetPort: 18080
+      nodePort: 31808
+  type: NodePort
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: io-fs-volume-deployment
+  namespace: iotree3d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: io-fs-volume
+  template:
+    metadata:
+      labels:
+        app: io-fs-volume
+    spec:
+      containers:
+        - name: io-fs-volume
+          image: io-fs-volume:v2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9301
+            - containerPort: 18080
+          volumeMounts:
+            - name: io-fs-volume-pvc
+              mountPath: /data
+      volumes:
+        - name: io-fs-volume-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/io3d/fs/volume
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: io-fs-filer-service
+  namespace: iotree3d
+spec:
+  selector:
+    app: io-fs-filer
+  ports:
+    - name: io-fs-file-8888
+      protocol: TCP
+      port: 8888
+      targetPort: 8888
+      nodePort: 31888
+    - name: io-fs-file-18888
+      protocol: TCP
+      port: 18888
+      targetPort: 18888
+      nodePort: 31188
+  type: NodePort
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: io-fs-filer-deployment
+  namespace: iotree3d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: io-fs-filer
+  template:
+    metadata:
+      labels:
+        app: io-fs-filer
+    spec:
+      containers:
+        - name: io-fs-filer
+          image: io-fs-filer:v2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8888
+            - containerPort: 18888
+          volumeMounts:
+            - name: io-fs-filer-pvc
+              mountPath: /data
+      volumes:
+        - name: io-fs-filer-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/io3d/fs/filer
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: io-fs-s3-service
+  namespace: iotree3d
+spec:
+  selector:
+    app: io-fs-s3
+  ports:
+    - name: io-fs-s3-8333
+      protocol: TCP
+      port: 8333
+      targetPort: 8333
+      nodePort: 31833
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: io-fs-s3-deployment
+  namespace: iotree3d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: io-fs-s3
+  template:
+    metadata:
+      labels:
+        app: io-fs-s3
+    spec:
+      containers:
+        - name: io-fs-s3
+          image: io-fs-s3:v2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8333            
+          volumeMounts:
+            - name: io-fs-s3-pvc
+              mountPath: /data
+      volumes:
+        - name: io-fs-s3-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/io3d/fs/s3

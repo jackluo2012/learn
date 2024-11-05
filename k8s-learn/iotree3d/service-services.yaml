@@ -1,0 +1,144 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: io-server-service
+  namespace: iotree3d
+spec:
+  selector:
+    app: io-server
+  ports:
+    - name: io-server
+      protocol: TCP
+      port: 8100
+      targetPort: 8100
+      nodePort: 31810
+  type: NodePort
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: io-server-deployment
+  namespace: iotree3d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: io-server
+  template:
+    metadata:
+      labels:
+        app: io-server
+    spec:
+      containers:
+        - name: io-server
+          image: io-server:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8100
+          volumeMounts:
+            - name: io-server-pvc
+              mountPath: /app
+      volumes:
+        - name: io-server-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/server/io-server/build
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: io-server-gui-service
+  namespace: iotree3d
+spec:
+  selector:
+    app: io-server-gui
+  ports:
+    - name: io-server-gui
+      protocol: TCP
+      port: 8000
+      targetPort: 80
+      nodePort: 31800
+  type: NodePort
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: io-server-gui-deployment
+  namespace: iotree3d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: io-server-gui
+  template:
+    metadata:
+      labels:
+        app: io-server-gui
+    spec:
+      containers:
+        - name: io-server-gui
+          image: io-server-gui:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: io-server-gui-pvc
+              mountPath: /app
+      volumes:
+        - name: io-server-gui-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/server/io-server-gui/dist
+
+---  
+#三维数据库文档服务，将编译的文件放至io-server-doc/dist目录
+apiVersion: v1
+kind: Service
+metadata:
+  name: io-server-doc-service
+  namespace: iotree3d
+spec:
+  selector:
+    app: io-server-doc
+  ports:
+    - name: io-server-doc
+      protocol: TCP
+      port: 8188
+      targetPort: 80
+      nodePort: 31818
+  type: NodePort
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: io-server-doc-deployment
+  namespace: iotree3d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: io-server-doc
+  template:
+    metadata:
+      labels:
+        app: io-server-doc
+    spec:
+      containers:
+        - name: io-server-doc
+          image: io-server-doc:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: io-server-doc-pvc
+              mountPath: /app
+      volumes:
+        - name: io-server-doc-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/server/io-server-doc/dist

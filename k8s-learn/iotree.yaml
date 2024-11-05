@@ -1,0 +1,295 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: iotree3d-service
+  namespace: iotree3d
+spec:
+  selector:
+    app: iotree3d
+  ports:
+    # 存储服务-主服务器
+    - name: io-fs-master-9333 
+      protocol: TCP
+      port: 9333
+      targetPort: 9333
+      nodePort: 30933
+    - name: io-fs-master-19333
+      protocol: TCP
+      port: 19333
+      targetPort: 19333
+      nodePort: 31933
+    # 存储服务-存储服务器
+    - name: io-fs-volume-9301
+      protocol: TCP
+      port: 9301
+      targetPort: 9301
+      nodePort: 31930
+    - name: io-fs-volume-18080
+      protocol: TCP
+      port: 18080
+      targetPort: 18080
+      nodePort: 31808
+    # 存储服务-文件管理服务器
+    - name: io-fs-file-8888 
+      protocol: TCP
+      port: 8888
+      targetPort: 8888
+      nodePort: 31888
+    - name: io-fs-file-18888
+      protocol: TCP
+      port: 18888
+      targetPort: 18888
+      nodePort: 31188
+    # 存储服务-文件访问服务器
+    - name: io-fs-s3-8333 
+      protocol: TCP
+      port: 8333
+      targetPort: 8333    
+      nodePort: 31833
+    # 公共服务-缓存
+    - name: io-common-cache-6379 
+      protocol: TCP
+      port: 6379
+      targetPort: 6379
+      nodePort: 31637
+    # 公共服务-数据库pg
+    - name: io-common-db-5432 
+      protocol: TCP
+      port: 5432
+      targetPort: 5432
+      nodePort: 31543
+    # 公共服务-TURN
+    - name: io-common-turn-3478 
+      protocol: TCP
+      port: 3478
+      targetPort: 3478
+      nodePort: 31478
+    # 公共服务-TURN  
+    # 监控服务-GUI服务
+    - name: io-monitor-gui
+      protocol: TCP
+      port: 3200
+      targetPort: 3200
+      nodePort: 31320
+    # 监控服务-时序数据库服务
+    - name: io-monitor-db 
+      protocol: TCP
+      port: 3100
+      targetPort: 9090
+      nodePort: 31310
+    # 监控服务-节点池服务  
+    - name: io-monitor-pool 
+      protocol: TCP
+      port: 8500
+      targetPort: 8500
+      nodePort: 31850  
+    # 三维模型库后端服务  
+    - name: io-server 
+      protocol: TCP
+      port: 8100
+      targetPort: 8100
+      nodePort: 31810  
+    # 三维数据库GUI服务，将编译的文件放至io-server-gui/dist目录
+    - name: io-server-gui
+      protocol: TCP
+      port: 8000
+      targetPort: 80  
+      nodePort: 31800
+  type: NodePort
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iotree3d-deployment
+  namespace: iotree3d
+  labels:
+    app: iotree3d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iotree3d
+  template:
+    metadata:
+      labels:
+        app: iotree3d
+    spec:
+      containers:        
+                # 存储服务-主服务器
+        - name: io-fs-master 
+          image: io-fs-master:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9333
+            - containerPort: 19333
+          volumeMounts:
+            - name: io-fs-master-pvc
+              mountPath: /data
+        # 存储服务-存储服务器
+        - name: io-fs-volume 
+          image: io-fs-volume:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9301
+            - containerPort: 18080
+          volumeMounts:
+            - name: io-fs-volume-pvc
+              mountPath: /data
+        # 存储服务-文件管理服务器
+        - name: io-fs-filer 
+          image: io-fs-filer:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8888
+            - containerPort: 18888
+          volumeMounts:
+            - name: io-fs-filer-pvc
+              mountPath: /data
+        # 存储服务-文件访问服务器
+        - name: io-fs-s3 
+          image: io-fs-s3:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8333
+          volumeMounts:
+            - name: io-fs-filer-pvc
+              mountPath: /data
+        # 公共服务-缓存
+        - name: io-common-cache 
+          image: io-common-cache:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - name: io-common-cache-pvc
+              mountPath: /etc/redis/redis.conf
+              subPath: redis.conf
+                            
+         # 公共服务-数据库pg
+        - name: io-common-db 
+          image: io-common-db:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: io-common-db-pvc
+              mountPath: /data
+        # 公共服务-TURN
+        - name: io-common-turn 
+          image: io-common-turn:latest
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: io-common-turn-pvc
+              mountPath: /etc/turnserver.conf
+              subPath: turnserver.conf
+        # 监控服务-GUI服务
+        - name: io-monitor-gui 
+          image: io-monitor-gui:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3200
+          volumeMounts:
+            - name: io-monitor-gui-pvc
+              mountPath: /var/lib/grafana
+        # 监控服务-时序数据库服务
+        - name: io-monitor-db
+          image: io-monitor-db:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: io-monitor-db-pvc
+              mountPath: /prometheus/data
+        # 监控服务-节点池服务
+        - name: io-monitor-pool 
+          image: io-monitor-pool:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8500
+          env:
+            - name: CONSUL_LOCAL_CONFIG
+              value: '{"http_config": {"response_headers" : { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, OPTIONS, POST, PUT"}}}'
+          volumeMounts:
+            - name: io-monitor-pool-pvc
+              mountPath: /consul/data 
+        # 三维数据库后端服务，将运行所需的文件放至io-server/build目录
+        - name: io-server 
+          image: io-server:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8100
+          volumeMounts:
+            - name: io-server-pvc
+              mountPath: /app   
+        # 三维数据库GUI服务，将编译的文件放至io-server-gui/dist目录
+        - name: io-server-gui 
+          image: io-server-gui:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: io-server-gui-pvc
+              mountPath: /app              
+      volumes:
+        # 存储服务-主服务器
+        - name: io-fs-master-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/io3d/fs/master
+        # 存储服务-存储服务器
+        - name: io-fs-volume-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/io3d/fs/volume
+        # 存储服务-文件管理服务器
+        - name: io-fs-filer-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/io3d/fs/filer
+        # 存储服务-文件访问服务器
+        - name: io-fs-s3-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/io3d/fs/s3
+        # 公共服务-缓存
+        - name: io-common-cache-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/server/io-common-cache
+        # 公共服务-数据库pg
+        - name: io-common-db-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data//io3d/common/db    
+        # 公共服务-TURN
+        - name: io-common-turn-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/server/io-common-turn
+        # 监控服务-GUI服务
+        - name: io-monitor-gui-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/io3d/monitor/gui
+        # 监控服务-时序数据库服务
+        - name: io-monitor-db-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/io3d/monitor/db
+        # 监控服务-节点池服务
+        - name: io-monitor-pool-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/io3d/monitor/pool
+        # 三维数据库-后端服务
+        - name: io-server-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/server/io-server/build
+        # 三维数据库GUI服务，将编译的文件放至io-server-gui/dist目录
+        - name: io-server-gui-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/server/io-server-gui/dist    

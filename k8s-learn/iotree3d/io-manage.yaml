@@ -1,0 +1,54 @@
+###k8s 用yaml 部署一个应用
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: io-manager
+  namespace: iotree3d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: io-manager-app
+  template:
+    metadata:
+      labels:
+        app: io-manager-app
+    spec:
+      containers:
+       # 资源管理器服务
+        - name: io-manager
+          image: io-manager:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8300
+          volumeMounts:
+            - name: io-manager-pvc
+              mountPath: /app
+            - name: io-manager-workspace-pvc
+              mountPath: /app/workspace
+      volumes:
+        # 资源管理器服务
+        - name: io-manager-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/server/io-manager/build
+        - name: io-manager-workspace-pvc
+          nfs:
+            server: 192.168.110.108
+            path: /home/data/io3d/workspace
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: io-manager-service
+  namespace: iotree3d
+spec:
+  selector:
+    app: io-manager-app
+  ports:
+    - name: io-manager-8300
+      protocol: TCP
+      port: 8300
+      targetPort: 8300      
+  type: ClusterIP
+
