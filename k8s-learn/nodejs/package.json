@@ -10,6 +10,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@kubernetes/client-node": "^0.22.0"
+    "@kubernetes/client-node": "^0.22.3",
+    "express": "^4.21.1",
+    "express-fileupload": "^1.5.1"
   }
 }
