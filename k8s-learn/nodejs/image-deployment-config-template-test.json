@@ -1,0 +1,35 @@
+{
+    "images": [
+      {
+        "name": "myapp1",
+        "ports": "${myapp1_port_80},${myapp1_port_8888}",
+        "env": "-PIXEL_STREAMING_STREAMER_PORT=${myapp1_port_80} -PIXEL_STREAMING_API_PORT=${myapp1_port_8888}",
+        "network": "bridge"
+      },
+      {
+        "name": "myapp2",        
+        "env": "-PIXEL_STREAMING_STREAMER_PORT=${myapp1_port_8888}",
+        "ports": "",
+        "network": "host"
+      },
+      {
+        "name": "myapp3",        
+        "env": "",
+        "ports": "",
+        "network": "host"
+      },
+      {
+        "name": "myapp4",        
+        "env": "-PIXEL_STREAMING_STREAMER_PORT=${myapp3_port_80}",
+        "ports": "${myapp4_port_80}",
+        "network": "host"
+      },
+      {
+        "name": "gameue5",
+        "ports": "",
+        "env": "PIXEL_STREAMING_STREAMER_PORT=${myapp1_port_8888} PIXEL_STREAMING_IP=${PIXEL_STREAMING_IP}",
+        "network": "host"
+      }
+    ]
+  }
+  

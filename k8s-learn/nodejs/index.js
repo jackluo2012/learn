@@ -2,15 +2,18 @@ const k8s = require('@kubernetes/client-node');
 
 
 // ### kubectl config view
+// https://www.kubesphere.io/zh/docs/v3.4/reference/api-docs/
+// kubectl -n kubesphere-system patch service ks-apiserver -p '{"spec":{"type":"NodePort"}}'
+// kubectl -n kubesphere-system get svc
 // 定义集群配置
 const cluster = {
     name: 'cluster.local',
-    server: 'http://192.168.110.108:30294', // 修改为你的 Kubernetes API 服务器地址和端口
+    server: 'http://192.168.110.108:31840', // 修改为你的 Kubernetes API 服务器地址和端口
   };
   
   const user = {
     username: 'admin',
-    password: 'xxx',
+    password: 'Iotree.com123',
     // 如果需要，添加认证信息，例如客户端证书或令牌
   };
   const context = {

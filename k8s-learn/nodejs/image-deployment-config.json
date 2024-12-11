@@ -1,0 +1,16 @@
+{
+  "images": [
+    {
+      "name": "myapp1",
+      "ports": "31529,30001",
+      "env": "-PIXEL_STREAMING_STREAMER_PORT=31529 -PIXEL_STREAMING_API_PORT=30001",
+      "network": "bridge"
+    },
+    {
+      "name": "myapp2",
+      "env": "-PIXEL_STREAMING_STREAMER_PORT=30001",
+      "network": "host",
+      "depends_on": "myapp1:v1.0"
+    }
+  ]
+}

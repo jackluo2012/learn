@@ -28,7 +28,7 @@ dist/
 *.egg
 *.egg-info
 build
-
+.vscode
 test.py
 update.py
 cookie.json

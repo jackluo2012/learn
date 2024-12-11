@@ -1,0 +1,16 @@
+{
+  "images": [
+    {
+      "name": "signalling",
+      "ports": "${myapp1_port_80},${myapp1_port_8888}",
+      "env": "HTTP_PORT=${myapp1_port_80} STREAMER_PORT=${myapp1_port_8888}",
+      "network": "bridge"
+    },
+    {
+      "name": "gameue5",
+      "ports": "",
+      "env": "PIXEL_STREAMING_STREAMER_PORT=${myapp1_port_8888} PIXEL_STREAMING_IP=${PIXEL_STREAMING_IP}",
+      "network": "host"
+    }
+  ]
+}
