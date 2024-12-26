@@ -1,7 +1,6 @@
 [package]
-name = "hello_world"
+name = "adder"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-aggregator = { path = "./aggregator" }
