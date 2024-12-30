@@ -1,3 +1,8 @@
+//! # My Crate
+//!
+//! `my_crate` is a collection of utilities to make performing certain
+//! calculations more convenient.
+
 pub struct Guess {
     value: i32,
 }
@@ -94,3 +99,17 @@ fn shoes_in_size(shoes: Vec<Shoe>, shoe_size: u32) -> Vec<Shoe> {
         .filter(|s| s.size == shoe_size)
         .collect()
 }
+
+
+/// Add One to The number given.
+/// # Example
+/// ```
+/// let x = 5;
+/// assert_eq!(hello_world::add_one(x), 6);
+/// ```
+pub fn add_one(x: i32) -> i32 {
+    x + 1
+}
+
+
+

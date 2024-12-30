@@ -1,8 +1,6 @@
 [package]
-name = "backyard"
+name = "art"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rand = "0.8.5"
-art = { path = "./art" }
