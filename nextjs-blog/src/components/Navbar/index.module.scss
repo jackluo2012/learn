@@ -1,0 +1,49 @@
+.navbar {
+    height: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #fff;
+}
+
+.logoArea {
+    font-size: 30px;
+    font-weight: bolder;
+    margin-right: 60px;
+}
+
+.linkArea {
+    a {
+        font-size: 18px;
+        padding: 0 20px;
+    }
+}
+
+.linkArea:hover {
+    color: red;
+}
+
+.customMenu {
+  background-color: transparent; // 移除背景颜色
+  border-bottom: 2px solid #ccc; // 添加底部边框
+
+  .ant-menu-item {
+    color: #333; // 设置菜单项文字颜色
+    font-size: 16px; // 设置字体大小
+    margin: 0 20px; // 调整菜单项间距
+
+    &:hover {
+      color: #1890ff; // 鼠标悬停时的文字颜色
+    }
+
+    &.ant-menu-item-selected {
+      color: red; // 选中状态的文字颜色
+      border-bottom: 2px solid #ff182b; // 选中状态的底部边框
+      font-weight: bold; // 当前导航的字体加粗
+      background-color: #ef0909; // 当前导航的背景颜色
+    }
+  }
+}
+.operationArea{
+    margin-left: 150px;
+}
