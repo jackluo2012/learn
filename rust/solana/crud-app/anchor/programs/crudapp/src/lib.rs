@@ -2,69 +2,98 @@
 
 use anchor_lang::prelude::*;
 
-declare_id!("coUnmi3oBUtwtd9fjeAvSsJssXh5A5xyPbhpewyzRVF");
+declare_id!("DwM4sXKyV3eZphys9G1TMAXe1agKHpBhcTD3MZcBMPcv");
 
 #[program]
 pub mod crudapp {
     use super::*;
+    
+    // 创建一个journal entry
+    pub fn create_journal_entry(
+        ctx: Context<CreateJournalEntry>,
+        title: String,
+        message: String,
+    ) -> Result<()> {
+        let journal_entry_state = &mut ctx.accounts.journal_entry;
+        journal_entry_state.owner = ctx.accounts.owner.key();
+        journal_entry_state.title = title;
+        journal_entry_state.message = message;
+       Ok(())
+    }
+    // 更新一个journal entry
+    pub fn update_journal_entry(
+        ctx: Context<UpdateJournalEntry>,
+        title: String,
+        message: String,
+    ) -> Result<()> {
+        let journal_entry_state = &mut ctx.accounts.journal_entry;
+        journal_entry_state.title = title;
+        journal_entry_state.message = message;
+        Ok(())
+    }
 
-  pub fn close(_ctx: Context<CloseCrudapp>) -> Result<()> {
-    Ok(())
+    // 删除一个journal entry
+    pub fn delete_journal_entry(
+        ctx: Context<DeleteJournalEntry>,
+        title: String,
+    ) -> Result<()> {
+        let journal_entry_state = &mut ctx.accounts.journal_entry;
+        // journal_entry_state.close(ctx.accounts.owner)?;
+        Ok(())
+    }
   }
 
-  pub fn decrement(ctx: Context<Update>) -> Result<()> {
-    ctx.accounts.crudapp.count = ctx.accounts.crudapp.count.checked_sub(1).unwrap();
-    Ok(())
-  }
-
-  pub fn increment(ctx: Context<Update>) -> Result<()> {
-    ctx.accounts.crudapp.count = ctx.accounts.crudapp.count.checked_add(1).unwrap();
-    Ok(())
-  }
-
-  pub fn initialize(_ctx: Context<InitializeCrudapp>) -> Result<()> {
-    Ok(())
-  }
-
-  pub fn set(ctx: Context<Update>, value: u8) -> Result<()> {
-    ctx.accounts.crudapp.count = value.clone();
-    Ok(())
-  }
+#[derive(Accounts)]
+#[instruction(title: String)] // 设置title 来自用户输入 
+pub struct CreateJournalEntry<'info> {
+    #[account(init, 
+      payer = owner, 
+      seeds = [title.as_bytes(), owner.key().as_ref()],
+      bump,
+      space = 8 + JournalEntryState::INIT_SPACE)
+    ]
+    pub journal_entry: Account<'info, JournalEntryState>,
+    #[account(mut)]
+    pub owner: Signer<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
-pub struct InitializeCrudapp<'info> {
-  #[account(mut)]
-  pub payer: Signer<'info>,
+#[instruction(title: String)] // 设置title 来自用户输入 
+pub struct UpdateJournalEntry<'info> {
+    #[account(mut, 
+      seeds = [title.as_bytes(), owner.key().as_ref()],
+      bump,
+      realloc = 8 + JournalEntryState::INIT_SPACE,// 重新分配空间
+      realloc::payer = owner,
+      realloc::zero = true,
+    )]
+    pub journal_entry: Account<'info, JournalEntryState>,
+    #[account(mut)]
+    pub owner: Signer<'info>,
+    pub system_program: Program<'info, System>,
 
-  #[account(
-  init,
-  space = 8 + Crudapp::INIT_SPACE,
-  payer = payer
-  )]
-  pub crudapp: Account<'info, Crudapp>,
-  pub system_program: Program<'info, System>,
 }
 #[derive(Accounts)]
-pub struct CloseCrudapp<'info> {
-  #[account(mut)]
-  pub payer: Signer<'info>,
-
-  #[account(
-  mut,
-  close = payer, // close account and return lamports to payer
-  )]
-  pub crudapp: Account<'info, Crudapp>,
+#[instruction(title: String)]
+pub struct DeleteJournalEntry<'info> {
+    #[account(mut, 
+      seeds = [title.as_bytes(), owner.key().as_ref()],
+      bump,
+      close = owner,
+    )]
+    pub journal_entry: Account<'info, JournalEntryState>,
+    #[account(mut)]
+    pub owner: Signer<'info>,
+    pub system_program: Program<'info,System>,
+    pub rent: Sysvar<'info, Rent>,
 }
-
-#[derive(Accounts)]
-pub struct Update<'info> {
-  #[account(mut)]
-  pub crudapp: Account<'info, Crudapp>,
-}
-
 #[account]
 #[derive(InitSpace)]
-pub struct Crudapp {
-  count: u8,
+pub struct JournalEntryState {
+  pub owner: Pubkey,
+  #[max_len(50)]
+  pub title: String,
+  #[max_len(1000)]
+  pub message: String,
 }

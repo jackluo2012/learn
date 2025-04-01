@@ -9,7 +9,8 @@ import { CrudappCreate, CrudappList } from './crudapp-ui'
 
 export default function CrudappFeature() {
   const { publicKey } = useWallet()
-  const { programId } = useCrudappProgram()
+  const { program } = useCrudappProgram()
+  const programId = program.programId
 
   return publicKey ? (
     <div>

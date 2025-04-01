@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-crudapp = "coUnmi3oBUtwtd9fjeAvSsJssXh5A5xyPbhpewyzRVF"
+crudapp = "DwM4sXKyV3eZphys9G1TMAXe1agKHpBhcTD3MZcBMPcv"
 
 [registry]
 url = "https://api.apr.dev"
