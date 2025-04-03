@@ -1,0 +1,10 @@
+[package]
+name = "wallets"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.97"
+bip39 = "2.1.0"
+bs58 = "0.5.1"
+solana-sdk = "2.2.2"
