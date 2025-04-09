@@ -1,0 +1,20 @@
+[toolchain]
+package_manager = "yarn"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+anchor_pda_token = "9jPTNkfZ6dmjgTzZErDGXXPYUtzUg7m61aE58A4WBDE8"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+#cluster = "localnet"
+cluster = "Devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
