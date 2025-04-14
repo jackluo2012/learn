@@ -417,3 +417,55 @@ async fn print_token_balance(
     println!("{} 余额: {}", account_name, balance);
     Ok(())
 }
+
+async fn create_token_account_with_pda(
+    client: &RpcClient,
+    payer: &Keypair,
+    mint: &Keypair,
+    seed: &str,
+) -> anyhow::Result<Pubkey> {
+    // 1. 计算 PDA 地址
+    let (pda, bump) = Pubkey::find_program_address(
+        &[
+            payer.pubkey().as_ref(),
+            mint.pubkey().as_ref(),
+            seed.as_bytes(),
+        ],
+        &id(),
+    );
+
+    // 2. 获取所需空间和租金
+    let space = spl_token_2022::state::Account::LEN;
+    let rent = client.get_minimum_balance_for_rent_exemption(space).await?;
+
+    // 3. 创建账户指令
+    let create_account_ix = system_instruction::create_account(
+        &payer.pubkey(),
+        &pda,
+        rent,
+        space as u64,
+        &id(),
+    );
+
+    // 4. 初始化 token 账户指令
+    let init_account_ix = initialize_account(
+        &id(),
+        &pda,
+        &mint.pubkey(),
+        &payer.pubkey(),
+    )?;
+
+    // 5. 创建并发送交易
+    let tx = Transaction::new_signed_with_payer(
+        &[create_account_ix, init_account_ix],
+        Some(&payer.pubkey()),
+        &[payer],
+        client.get_latest_blockhash().await?,
+    );
+
+    let signature = client.send_and_confirm_transaction(&tx).await?;
+    println!("Token PDA账户创建成功，交易签名: {}", signature);
+    println!("Token PDA地址: {}", pda);
+
+    Ok(pda)
+}

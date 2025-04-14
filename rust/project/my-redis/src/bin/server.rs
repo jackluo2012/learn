@@ -90,3 +90,25 @@ fn new_shared_db(num_shareds:usize) -> SharedDb {
     }
     Arc::new(db)
 }
+
+struct Connection {
+    stream: TcpStream,
+}
+
+impl Connection {
+    pub async fn read_frame(&mut self) -> Result<Option<Frame>, Box<dyn std::error::Error>> {
+        let mut buf = [0; 9];
+        self.stream.read_exact(&mut buf).await?;
+
+        let len = i32::from_be_bytes(buf[1..].try_into().unwrap());
+
+        let mut buf = vec![0; len as usize];
+        self.stream.read_exact(&mut buf).await?;
+    }
+
+    pub async fn write_frame(&mut self, frame: &Frame) -> Result<(), Box<dyn std::error::Error>> {
+        let mut buf = Vec::new();
+        frame.write_into(&mut buf);
+        self.stream.write_all(&buf).await?;
+    }
+}

@@ -12,7 +12,7 @@ crudapp = "DwM4sXKyV3eZphys9G1TMAXe1agKHpBhcTD3MZcBMPcv"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "https://api.devnet.solana.com"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

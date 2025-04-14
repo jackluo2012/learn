@@ -12,6 +12,8 @@
   "dependencies": {
     "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
     "@metaplex-foundation/umi-bundle-defaults": "^1.1.1",
-    "@solana-developers/helpers": "^2.8.1"
+    "@solana-developers/helpers": "^2.8.1",
+    "@solana/kit": "^2.1.0",
+    "tsx": "^4.19.3"
   }
 }
