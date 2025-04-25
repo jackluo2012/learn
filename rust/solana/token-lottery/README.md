@@ -80,3 +80,18 @@ pnpm anchor-test
 pnpm anchor deploy --provider.cluster devnet
 ```
 
+
+
+
+
+```
+存款
+提取借出
+偿还
+清算
+设置账户
+```
+
+```
+主帐呈是银行，对于我们想要借贷协议中使用的每项资产，和用户帐号
+```
