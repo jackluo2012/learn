@@ -22,38 +22,56 @@ const dbName = 'blackjack';
 const collectionName = 'players';
 
 class BlackjackDB {
+  private static instance: BlackjackDB;
   private client: MongoClient;
   private db: Db | null = null;
   private collection: Collection<Player> | null = null;
-  private isConnected: boolean = false; // 标志位
+  private isConnected: boolean = false;
+  private connectionPromise: Promise<void> | null = null;
 
-  constructor() {
-    this.client = new MongoClient(uri);
+  private constructor() {
+    const uri = process.env.MONGO_URI || 'mongodb://localhost:27017';
+    // 设置最大连接数和超时
+    this.client = new MongoClient(uri, {
+        maxPoolSize: 20, // 连接池最大连接数，可根据业务调整
+        minPoolSize: 2,
+        serverSelectionTimeoutMS: 5000, // 选择服务器超时
+        socketTimeoutMS: 10000,         // 套接字超时
+    });
   }
 
-  // 连接数据库并初始化
+  public static getInstance(): BlackjackDB {
+    if (!BlackjackDB.instance) {
+      BlackjackDB.instance = new BlackjackDB();
+    }
+    return BlackjackDB.instance;
+  }
+
   async connect(): Promise<void> {
+    if (this.isConnected) return;
+    if (!this.connectionPromise) {
+      this.connectionPromise = this._connect();
+    }
+    return this.connectionPromise;
+  }
+
+  private async _connect(): Promise<void> {
     try {
       await this.client.connect();
       this.db = this.client.db(dbName);
       this.collection = this.db.collection<Player>(collectionName);
-      this.isConnected = true; // 设置标志位
+      this.isConnected = true;
       console.log('Connected to MongoDB');
     } catch (error) {
       console.error('Failed to connect to MongoDB:', error);
+      this.connectionPromise = null;
       throw error;
     }
   }
 
-  // 关闭数据库连接
-  async close(): Promise<void> {
-    await this.client.close();
-    console.log('MongoDB connection closed');
-  }
-
-  // 创建新玩家记录
-async createPlayer(playerName: string, score: number): Promise<void> {
-    if (!this.isConnected) throw new Error('Database not connected'); // 检查标志位
+  // 修改其他方法，确保在使用前已连接
+  async createPlayer(playerName: string, score: number): Promise<void> {
+    await this.connect(); // 确保连接
     if (!this.collection) throw new Error('Collection not initialized');
 
     try {
@@ -72,10 +90,11 @@ async createPlayer(playerName: string, score: number): Promise<void> {
         console.error('Failed to create or check player:', error);
         throw error;
     }
-}
+  }
 
   // 读取所有玩家记录
   async getAllPlayers(): Promise<Player[]> {
+    await this.connect(); // 确保连接
     if (!this.collection) throw new Error('Collection not initialized');
     
     try {
@@ -89,6 +108,7 @@ async createPlayer(playerName: string, score: number): Promise<void> {
 
   // 根据玩家名称读取记录
   async getPlayerByName(playerName: string): Promise<Player | null> {
+    await this.connect(); // 确保连接
     if (!this.collection) throw new Error('Collection not initialized');
     
     try {
@@ -102,6 +122,7 @@ async createPlayer(playerName: string, score: number): Promise<void> {
 
   // 更新玩家分数
   async updatePlayerScore(playerName: string, newScore: number): Promise<void> {
+    await this.connect(); // 确保连接
     if (!this.collection) throw new Error('Collection not initialized');
     
     try {
@@ -122,6 +143,7 @@ async createPlayer(playerName: string, score: number): Promise<void> {
 
   // 删除玩家记录
   async deletePlayer(playerName: string): Promise<void> {
+    await this.connect(); // 确保连接
     if (!this.collection) throw new Error('Collection not initialized');
     
     try {
@@ -136,22 +158,32 @@ async createPlayer(playerName: string, score: number): Promise<void> {
       throw error;
     }
   }
+
+  public async ping(): Promise<boolean> {
+    try {
+        await this.connect();
+        await this.db?.command({ ping: 1 });
+        return true;
+    } catch {
+        this.isConnected = false;
+        this.connectionPromise = null;
+        return false;
+    }
+  }
 }
 
-const db = new BlackjackDB();
+// 修改数据库实例化方式
+const db = BlackjackDB.getInstance();
 
 (async () => {
   try {
     await db.connect(); // 确保连接完成
-    const DEFAULT_PLAYER = "jackluo";
-    await db.createPlayer(DEFAULT_PLAYER, 0); // 创建玩家
+    // 删除默认创建玩家的代码，改为仅确保数据库连接
+    console.log('Database connected successfully');
   } catch (error) {
     console.error("Error initializing database:", error);
   }
 })();
-
-
-const DEFAULT_PLAYER = "jackluo";
 
 // 当游戏开始时，分别给玩家和庄家2张随机牌。
 export interface Card {
@@ -187,230 +219,25 @@ const gameState: {
     message: "",
     score:0,
 };
-//  获取随机的卡片
-// deck 中 抽取count 张卡片
-function getRandomCard(deck: Card[], count: number): Card[][] {
-    // count 是要抽取的卡片数量，这个要获取 deck 中 随机的下标，而且不会重复 
-    const randomIndexSet = new Set<number>();
-    while (randomIndexSet.size < count) {
-        const randomIndex = Math.floor(Math.random() * deck.length);
-        randomIndexSet.add(randomIndex);
-    }
-    // 根据从 randomIndexSet 中获取下标，从 deck 中获取对应的卡片
-    const randomCards = deck.filter((_, index) => randomIndexSet.has(index));
-    // 上面已经抽取了count 张卡片，所以需要更新 deck
-    const remainingDeck = deck.filter((_, index) => !randomIndexSet.has(index));
 
-    return [randomCards, remainingDeck]
-}
-export async function GET(request:Request) {
-    const url = new URL(request.url);
-    const address = url.searchParams.get("address");
-    if (!address){
-        return new Response(JSON.stringify({
-            playerHand: [],
-            dealerHand: [],
-            message: "address is required",
-            score:0,
-        }), {
-            status: 400,
-            headers: {
-                "Content-Type": "application/json"
-            }
-        });
-    }
-    //    重置状态
-    gameState.playerHand = [];
-    gameState.dealerHand = [];
-    gameState.deck = initialDeck;
-    gameState.message = "";
-    const [playerCards, remainingDeck] = getRandomCard(gameState.deck, 2);
-    //   
-    const [dealerCards, newDeck] = getRandomCard(remainingDeck, 1);
-    //   更新 gameState
-    gameState.playerHand = playerCards;
-    gameState.dealerHand = dealerCards;
-    gameState.deck = newDeck;
-    gameState.message = "";
+// 用于存储每个玩家的游戏状态
+const gameStates = new Map<string, typeof gameState>();
 
-    // 从数据中读取数据
-    const player = await db.getPlayerByName(address);
-    gameState.score = player?.score || 0;
+// ===================== 工具函数 =====================
 
-
-    return new Response(JSON.stringify({
-        playerHand: gameState.playerHand,
-        dealerHand: [gameState.dealerHand[0], { suit: "？", rank: "？" } as Card],
-        message: gameState.message,
-        score:gameState.score,
-
-    }), {
-        status: 200,
-        headers: {
-            "Content-Type": "application/json"
-        }
+/**
+ * 构建标准 JSON 响应
+ */
+function buildResponse(data: object, status = 200) {
+    return new Response(JSON.stringify(data), {
+        status,
+        headers: { "Content-Type": "application/json" }
     });
 }
 
-
-export async function POST(request: Request) {
-    // 接收参数
-    const body = await request.json();
-    const { action,address } = body;
-    if (action === "auth") {
-        const {address,message,signature} = body;
-        const isValid = await verifyMessage({address,message,signature});
-        if(!isValid){
-            return new Response(JSON.stringify({
-                message: "签名验证失败",
-            }), {
-                status: 400,
-                headers: {
-                    "Content-Type": "application/json"
-                }
-            });
-        }else{
-            const token = jwt.sign({ address },process.env.JWT_SECRET || "",{expiresIn:"1h"});
-
-            return new Response(JSON.stringify({
-                message: "签名验证成功",
-                jsonwebtoken: token,
-            }), {
-                status: 200,
-                headers: {
-                    "Content-Type": "application/json"
-                }
-            });
-        }
-    }
-
-    //  验证token 
-    const token = request.headers.get("bearer")?.split(" ")[1];
-    if (!token) {
-        return new Response(JSON.stringify({
-            message: "token is required",
-        }), {
-            status: 400,
-            headers: {
-                "Content-Type": "application/json"
-            }
-        });
-    }
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "") as { address: string };
-    if (!decoded || decoded.address.toLocaleLowerCase !== address.toLocaleLowerCase) {
-        return new Response(JSON.stringify({
-            message: "token is invalid",
-        }), {
-            status: 400,
-            headers: {
-                "Content-Type": "application/json"
-            }
-        });
-    }
-
-
-
-    if (action === "hit") {
-        // 当点击时，从牌组中随机抽取一张牌并将其添加到玩家手中// 计算玩家手牌值
-        // //玩家手牌值为21:玩家赢，二十一点
-        // //玩家手牌超过21:玩家输，弃牌
-        // //玩家手牌小于21:继续玩家可以击牌或站立
-        // 从现有的游戏状态中获取牌组，抽取一张牌，更新游戏状态，并返回更新后的游戏状态
-        const [cards, newDeck] = getRandomCard(gameState.deck, 1);
-        // 更新 游戏状态，投取的值 
-        gameState.playerHand.push(...cards);
-        //  设置游戏的新的状态 
-        gameState.deck = newDeck;
-        const playerHandValue = calculateHandValue(gameState.playerHand);
-        if (playerHandValue === 21) {
-            gameState.message = "玩家赢，二十一点";
-            gameState.isGameOver = true;
-            gameState.score=gameState.score+100;
-            gameState.winner = "player";
-        } else if (playerHandValue > 21) {
-            gameState.message = "玩家输，弃牌";
-            gameState.isGameOver = true;
-            gameState.winner = "dealer";
-            gameState.score=gameState.score-100;
-        }
-    } else if (action === "stand") {
-        // /当点击站立时，从牌堆中随机抽取一张牌并将其添加到庄家手中
-        // //继续这样做，直到庄家有17分或更多
-        // /计算庄家手牌值
-        // //庄家手牌值为21:玩家输，庄家黑桃J
-        // //庄家底牌是21:玩家赢，庄家弃牌
-        // //庄家手牌少于21
-        // //计算玩家手牌值
-        // //玩家>庄家:玩家赢
-        // //玩家<庄家:玩家输
-        // //玩家=庄家:平局
-        
-        while (calculateHandValue(gameState.dealerHand) < 17) {
-            const [randomCards, newDeck] = getRandomCard(gameState.deck, 1);
-            // 更新抽卡以后的gameState
-            gameState.dealerHand.push(...randomCards);
-            gameState.deck = newDeck;
-        }
-        const dealerHandValue = calculateHandValue(gameState.dealerHand);
-        if (dealerHandValue === 21) {
-            gameState.message = "庄家赢，庄家BlackJack";
-            gameState.isGameOver = true;
-            gameState.winner = "dealer";
-            gameState.score=gameState.score-100;
-        } else if (dealerHandValue > 21) {
-            gameState.message = "庄家弃牌，玩家赢";
-            gameState.isGameOver = true;
-            gameState.winner = "player";
-            gameState.score=gameState.score+100;
-        }else{
-            // 计算玩家的牌值
-            const playerHandValue = calculateHandValue(gameState.playerHand);
-            if (playerHandValue > dealerHandValue) {
-                gameState.message = "玩家赢";
-                gameState.isGameOver = true;
-                gameState.winner = "player";
-                gameState.score=gameState.score+100;
-            } else if (playerHandValue < dealerHandValue) {
-                gameState.message = "庄家赢";
-                gameState.isGameOver = true;
-                gameState.winner = "dealer";
-                gameState.score=gameState.score-100;
-            } else{
-                gameState.message = "平局";
-            }
-        }
-
-    } else {
-        return new Response(JSON.stringify({
-            message: "无效的操作"
-        }), {
-            status: 400,
-            headers: {
-                "Content-Type": "application/json"
-            }
-        });
-    }
-    // 写入操作
-    try {
-        await db.updatePlayerScore(address, gameState.score);
-    } catch (error) {
-        console.error("Failed to update player score:", error);
-    }
-
-    return new Response(JSON.stringify({
-        playerHand: gameState.playerHand,
-        dealerHand:gameState.message===""?[gameState.dealerHand[0],{ suit: "？", rank: "？" } as Card]:gameState.dealerHand ,
-        message: gameState.message,
-        winner: gameState.winner,
-        score:gameState.score,
-    }), {
-        status: 200,
-        headers: {
-            "Content-Type": "application/json"
-        }
-    });
-}
-//  计算 卡片的值 
+/**
+ * 计算一手牌的点数，A可作1或11
+ */
 function calculateHandValue(hand: Card[]): number {
     let value = 0;
     let aceCount = 0;
@@ -429,6 +256,234 @@ function calculateHandValue(hand: Card[]): number {
         aceCount--;
     }
     return value;
+}
+
+/**
+ * 从牌堆中随机抽取 count 张牌
+ */
+function getRandomCard(deck: Card[], count: number): [Card[], Card[]] {
+    const randomIndexSet = new Set<number>();
+    while (randomIndexSet.size < count) {
+        const randomIndex = Math.floor(Math.random() * deck.length);
+        randomIndexSet.add(randomIndex);
+    }
+    const randomCards = deck.filter((_, index) => randomIndexSet.has(index));
+    const remainingDeck = deck.filter((_, index) => !randomIndexSet.has(index));
+    return [randomCards, remainingDeck];
+}
+
+// ===================== 游戏状态管理 =====================
+
+/**
+ * 获取初始游戏状态
+ */
+function getInitialGameState(): typeof gameState {
+    return {
+        playerHand: [],
+        dealerHand: [],
+        deck: [...initialDeck],
+        playerScore: 0,
+        dealerScore: 0,
+        isPlayerTurn: true,
+        isGameOver: false,
+        winner: null,
+        message: "",
+        score: 0,
+    };
+}
+
+/**
+ * 获取或创建某玩家的游戏状态
+ */
+function getOrCreateGameState(address: string): typeof gameState {
+    if (!gameStates.has(address)) {
+        gameStates.set(address, getInitialGameState());
+    }
+    return gameStates.get(address)!;
+}
+
+// ===================== 业务逻辑分离 =====================
+
+/**
+ * 处理玩家 hit 操作
+ */
+function handleHit(state: typeof gameState) {
+    const [cards, newDeck] = getRandomCard(state.deck, 1);
+    state.playerHand.push(...cards);
+    state.deck = newDeck;
+    const playerHandValue = calculateHandValue(state.playerHand);
+    if (playerHandValue === 21) {
+        state.message = "玩家赢，二十一点";
+        state.isGameOver = true;
+        state.score += 100;
+        state.winner = "player";
+    } else if (playerHandValue > 21) {
+        state.message = "玩家输，弃牌";
+        state.isGameOver = true;
+        state.winner = "dealer";
+        state.score -= 100;
+    }
+}
+
+/**
+ * 处理玩家 stand 操作
+ */
+function handleStand(state: typeof gameState) {
+    // 庄家补牌直到17点或以上
+    while (calculateHandValue(state.dealerHand) < 17) {
+        const [randomCards, newDeck] = getRandomCard(state.deck, 1);
+        state.dealerHand.push(...randomCards);
+        state.deck = newDeck;
+    }
+    const dealerHandValue = calculateHandValue(state.dealerHand);
+    if (dealerHandValue === 21) {
+        state.message = "庄家赢，庄家BlackJack";
+        state.isGameOver = true;
+        state.winner = "dealer";
+        state.score -= 100;
+    } else if (dealerHandValue > 21) {
+        state.message = "庄家弃牌，玩家赢";
+        state.isGameOver = true;
+        state.winner = "player";
+        state.score += 100;
+    } else {
+        const playerHandValue = calculateHandValue(state.playerHand);
+        if (playerHandValue > dealerHandValue) {
+            state.message = "玩家赢";
+            state.isGameOver = true;
+            state.winner = "player";
+            state.score += 100;
+        } else if (playerHandValue < dealerHandValue) {
+            state.message = "庄家赢";
+            state.isGameOver = true;
+            state.winner = "dealer";
+            state.score -= 100;
+        } else {
+            state.message = "平局";
+        }
+    }
+}
+
+/**
+ * 验证JWT Token
+ */
+function verifyToken(request: Request, address: string): string | null {
+    const token = request.headers.get("bearer")?.split(" ")[1];
+    if (!token) return null;
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "") as { address: string };
+        if (!decoded || !decoded.address || decoded.address.toLowerCase() !== address.toLowerCase()) {
+            return null;
+        }
+        return token;
+    } catch {
+        return null;
+    }
+}
+
+// ===================== API 入口 =====================
+
+/**
+ * GET: 初始化一局游戏
+ */
+export async function GET(request: Request) {
+    const url = new URL(request.url);
+    const address = url.searchParams.get("address");
+    if (!address) {
+        return buildResponse({ playerHand: [], dealerHand: [], message: "address is required", score: 0 }, 400);
+    }
+    const state = getOrCreateGameState(address);
+    Object.assign(state, getInitialGameState());
+
+    // 发牌
+    const [playerCards, remainingDeck] = getRandomCard(state.deck, 2);
+    const [dealerCards, newDeck] = getRandomCard(remainingDeck, 1);
+    state.playerHand = playerCards;
+    state.dealerHand = dealerCards;
+    state.deck = newDeck;
+    state.message = "";
+
+    // 查询分数
+    const player = await db.getPlayerByName(address);
+    state.score = player?.score || 0;
+
+    return buildResponse({
+        playerHand: state.playerHand,
+        dealerHand: [state.dealerHand[0], { suit: "？", rank: "？" } as Card],
+        message: state.message,
+        score: state.score,
+    });
+}
+
+/**
+ * POST: 处理玩家操作（auth/hit/stand）
+ */
+export async function POST(request: Request) {
+    try {
+        const body = await request.json();
+        const { action, address } = body;
+
+        // 参数校验
+        if (!action || !address) {
+            return buildResponse({ message: "Missing required parameters" }, 400);
+        }
+
+        await db.connect();
+
+        // 处理登录认证
+        if (action === "auth") {
+            const { address, message, signature } = body;
+            const isValid = await verifyMessage({ address, message, signature });
+            if (!isValid) {
+                return buildResponse({ message: "签名验证失败" }, 400);
+            }
+            const token = jwt.sign({ address }, process.env.JWT_SECRET || "", { expiresIn: "1h" });
+            // 自动注册新玩家
+            try {
+                const player = await db.getPlayerByName(address);
+                if (!player) {
+                    await db.createPlayer(address, 0);
+                }
+            } catch (error) {
+                console.error("Error checking/creating player:", error);
+            }
+            return buildResponse({ message: "签名验证成功", jsonwebtoken: token }, 200);
+        }
+
+        // 其它操作需校验token
+        if (!verifyToken(request, address)) {
+            return buildResponse({ message: "token is invalid or required" }, 400);
+        }
+
+        const state = getOrCreateGameState(address);
+
+        // 处理游戏动作
+        if (action === "hit") {
+            handleHit(state);
+        } else if (action === "stand") {
+            handleStand(state);
+        } else {
+            return buildResponse({ message: "无效的操作" }, 400);
+        }
+
+        // 更新分数
+        try {
+            await db.updatePlayerScore(address, state.score);
+        } catch (error) {
+            console.error("Failed to update player score:", error);
+        }
+
+        return buildResponse({
+            playerHand: state.playerHand,
+            dealerHand: state.message === "" ? [state.dealerHand[0], { suit: "？", rank: "？" } as Card] : state.dealerHand,
+            message: state.message,
+            winner: state.winner,
+            score: state.score,
+        });
+    } catch (error) {
+        console.error('Error processing request:', error);
+        return buildResponse({ message: error instanceof Error ? error.message : "Internal server error" }, 500);
+    }
 }
 
 
