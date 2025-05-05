@@ -2,6 +2,9 @@
 import { act, useEffect, useState } from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount,useSignMessage } from "wagmi";
+import { parseAbi,createPublicClient,createWalletClient, custom } from "viem";
+import { avalancheFuji } from "viem/chains";
+import { create } from "domain";
 export default function Page() {
 
   //  设置谁赢了
@@ -13,6 +16,8 @@ export default function Page() {
   const [dealerHand, setDealerHand] = useState<{ rank: string, suit: string }[]>([]);
   const [isSignature, setIsSignature] = useState<boolean>(false);
   const { address,isConnected } = useAccount();
+  const [publicClient, setPublicClient] = useState<any>(null);
+  const [walletClient, setWalletClient] = useState<any>(null);
  
   const { signMessageAsync } = useSignMessage();
   // 始化化
@@ -37,6 +42,25 @@ export default function Page() {
     setScore(data.score);
 
     console.log(address,isConnected);
+
+    //如果 是在浏览器上
+    if (typeof window !== "undefined" && window.ethereum) {
+      // 获取客户端
+      const publicClient = createPublicClient({
+        chain: avalancheFuji,
+        transport: custom(window.ethereum),
+      });
+      const walletClient =createWalletClient({
+        chain: avalancheFuji,
+        transport: custom(window.ethereum),
+      });
+      setPublicClient(publicClient);
+      setWalletClient(walletClient);
+    }else {
+      // 钱包没有安装 
+      console.log("钱包没有安装")
+    }
+
 
   };
   async function handleHit() {
@@ -133,6 +157,16 @@ export default function Page() {
       console.log("验证成功");
      }
   }
+  // 点击 发送交易 铸造nft
+  async function handleSendTx() {
+      // 获取合约地址
+      const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+      //  还需要合约的abi
+      const contractAbi = parseAbi([process.env.NEXT_PUBLIC_CONTRACT_ABI || ""]);
+      //  publicClient  -> 模拟交易 -> 通过 后
+      // walletClient  -> 真正的交易  -> 实际的交易
+  }
+
   if (! isSignature){
     return (
       <div className="flex justify-center items-center h-screen">
