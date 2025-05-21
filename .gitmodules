@@ -13,3 +13,6 @@
 [submodule "rust/ethereum/foundry/simulate-transfer/lib/forge-std"]
 	path = rust/ethereum/foundry/simulate-transfer/lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
+[submodule "rust/ethereum/foundry/gpu_token_attack/lib/forge-std"]
+	path = rust/ethereum/foundry/gpu_token_attack/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
