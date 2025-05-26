@@ -53,6 +53,81 @@ l1BlockNumber        8382449
 timeboosted          false
 ```
 
+### 部署合约的地址
+```shell
+
+deployed code at address: 0x4cbe87ce6faf8786c24aa612dbd17395034c2c24
+deployment tx hash: 0x63099eb1620eff8ef9560315fae3dfd8d1d0a15f21c8f5e869fa9e608fcf8b17
+Error: stylus deploy failed
+```
+
+### 激活合约
+```shell
+cargo stylus activate --endpoint=https://sepolia-rollup.arbitrum.io/rpc   --private-key=$PKEY --address 0x4cbe87ce6faf8786c24aa612dbd17395034c2c24
+```
+
+### 设置存存款地址
+```shell
+cast send --rpc-url https://sepolia-rollup.arbitrum.io/rpc --private-key $PKEY 0x4cbe87ce6faf8786c24aa612dbd17395034c2c24 "setAsset(address)" 0x48fdFfe10c6F096dfaC5E62Be05E0a627205E1Dc
+```
+
+```output
+cast send --rpc-url https://sepolia-rollup.arbitrum.io/rpc --private-key $PKEY 0x4cbe87ce6faf8786c24aa612dbd17395034c2c24 "setAsset(address)" 0x4cbe87ce6faf8786c24aa612dbd17395034c2c24
+
+blockHash            0x2db9e841302c8783a4dd75248f666663ea0630e52c8541cae2443ee652b3f04b
+blockNumber          155934205
+contractAddress
+cumulativeGasUsed    891456
+effectiveGasPrice    100000000
+from                 0xE96cFDc8F44C12270aCaDA7F9140c8A99Bd185dB
+gasUsed              65629
+logs                 []
+logsBloom            0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+root
+status               1 (success)
+transactionHash      0x5cb7ed17d5f1aefff583a5069ec0251e288dcf3c0cb9adbcd7c42b7189243b34
+transactionIndex     19
+type                 2
+blobGasPrice
+blobGasUsed
+to                   0x4CBE87CE6faF8786C24aa612DBd17395034C2c24
+gasUsedForL1         0
+l1BlockNumber        8388998
+timeboosted          false
+```
+
+新部署的合约地址：0xe67216fe214832e36e8b32d5632b855c68bdd9fb
+代币合约的地址：0x48fdffe10c6f096dfac5e62be05e0a627205e1dc
+
+```shell
+cast send --rpc-url https://sepolia-rollup.arbitrum.io/rpc --private-key $PKEY 0xe67216fe214832e36e8b32d5632b855c68bdd9fb "setAsset(address)" 0x48fdffe10c6f096dfac5e62be05e0a627205e1dc
+```
+
+
+
+### 存款
+```shell
+cast send --rpc-url https://sepolia-rollup.arbitrum.io/rpc \
+  --private-key $PKEY \
+  0x4cbe87ce6faf8786c24aa612dbd17395034c2c24 \
+  "approve(address,uint256)" 0x4cbe87ce6faf8786c24aa612dbd17395034c2c24 88888888
+
+
+
+cast send --rpc-url https://sepolia-rollup.arbitrum.io/rpc --private-key $PKEY 0xe67216fe214832e36e8b32d5632b855c68bdd9fb "deposit(uint256)" 88888888
+```
+
+### 新合约地址
+```bash
+deployed code at address: 0x9d4ea7f4a8732c305873afc8c2175c67b6e38a00
+deployment tx hash: 0x66c4025f436cdb49de39d43e4c58cd7b7976003adf7a0811938fa651de2d88de
+contract activated and ready onchain with tx hash: 0xbcba06d52e22781ed30fc32ea3c19f44b84f52281ccd5652999750cb435f73b8
+```
+
+
+
+
+
 ![Image](./header.png)
 
 # Stylus Hello World
