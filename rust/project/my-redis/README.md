@@ -1,4 +1,18 @@
 ### Tokio my My-redis项目
+### 需要在cargo.toml中添加依赖
+```bash
+cargo run --example hello-redis
+
+
+
+cargo run --bin echo-server-copy
+
+
+```
+
+
+
+
 ### 前期准备
 #### 安装mini-redis.server 端 
 ```

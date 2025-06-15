@@ -1,114 +1,70 @@
-use mini_redis::{Connection, Frame};
 use tokio::net::{TcpListener, TcpStream};
-use std::collections::HashMap;
+use mini_redis::{Connection, Frame};
 use bytes::Bytes;
-use std::sync::{Arc, Mutex,MutexGuard};
+use std::sync::{Arc, Mutex};
+use mini_redis::Command::{self, Get, Set};
+    use  std::collections::HashMap;
 type Db = Arc<Mutex<HashMap<String, Bytes>>>;
-type SharedDb = Arc<Vec<Mutex<HashMap<String, Vec<u8>>>>>;
+
+
+
 
 #[tokio::main]
-async fn main() {
-    let listener = TcpListener::bind("127.0.0.1:6379").await.unwrap();
-    
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    //监听指定地址，等待TCP进来
+    let listener = TcpListener::bind("127.0.0.1:6379").await?;
+
     println!("Listening");
 
-    let db = Arc::new(Mutex::new(HashMap::<String, Bytes>::new()));
-    
+    let db = Arc::new(Mutex::new(HashMap::new()));
+
     loop {
-        let (socket, _) = listener.accept().await.unwrap();
+        // 第二个被忽略的项中包含有新连接的 `IP` 和端口信息
+        let (socket, _) = listener.accept().await?;
+        // 将 handle 克隆一份
         let db = db.clone();
+        // 为每一条连接都生成一个新的任务，
+        // `socket` 的所有权将被移动到新的任务中，并在那里进行处理
+        println!("Accepted");
         tokio::spawn(async move {
-            
             process(socket,db).await;
         });
-        
-
     }
 }
-async fn process(socket: TcpStream,db: Db) {
-    use mini_redis::Command::{self,Get,Set};    
 
+async fn process(socket: TcpStream, db: Db) {
+    
+        
+    // // `Connection` 对于 redis 的读写进行了抽象封装，
+    // 因此我们读到的是一个一个数据帧frame(数据帧 = redis命令 + 数据)，
+    // 而不是字节流
+    // 创建一个 `Connection`，它实现了 `AsyncRead` 和 `AsyncWrite`。
+     // `mini-redis` 提供的便利函数，使用返回的 `connection` 可以用于从 socket 中读取数据并解析为数据帧
     let mut connection = Connection::new(socket);
-
+    // 使用 `read_frame` 方法从连接获取一个数据帧：一条redis命令 + 相应的数据
     while let Some(frame) = connection.read_frame().await.unwrap() {
+        println!("GOT {:?}", frame);
         let response = match Command::from_frame(frame).unwrap() {
             Set(cmd) => {
+                // 值被存储为`Vec<u8>` 的形式
                 let mut db = db.lock().unwrap();
-                
                 db.insert(cmd.key().to_string(), cmd.value().clone());
                 Frame::Simple("OK".to_string())
             }
             Get(cmd) => {
                 let db = db.lock().unwrap();
-
-                
                 if let Some(value) = db.get(cmd.key()) {
-                    Frame::Bulk(value.clone())
+                    // `Frame::Bulk` 的值被存储为 `Vec<u8>` 的形式
+                    Frame::Bulk(value.clone().into())
                 } else {
                     Frame::Null
                 }
+
             }
             cmd => panic!("unimplemented {:?}", cmd),
         };
-
+        // 将请求响应返回给客户端
         connection.write_frame(&response).await.unwrap();
-
-    }
-}    
-async fn increment_and_do_stuff(mutex: &Mutex<i32>) {
-    {
-        let mut lock: MutexGuard<i32> = mutex.lock().unwrap();
-        *lock += 1;
-    }
-    do_something_async().await;
-}
-
-async fn do_something_async() {
-    println!("Doing something async...");
-}
-
-struct CanIncrement {
-    mutex:Mutex<i32>
-}
-
-impl CanIncrement {
-    fn increment(&mut self){
-        let mut lock = self.mutex.lock().unwrap();
-        *lock += 1;
-    }
-}
-
-async fn increment_and_do_stuff_2(can_increment: &mut CanIncrement) {
-    can_increment.increment();
-    do_something_async().await;
-}
-
-fn new_shared_db(num_shareds:usize) -> SharedDb {
-    let mut db = Vec::new();
-    for _ in 0..num_shareds {
-        db.push(Mutex::new(HashMap::<String, Vec<u8>>::new()));
-    }
-    Arc::new(db)
-}
-
-struct Connection {
-    stream: TcpStream,
-}
-
-impl Connection {
-    pub async fn read_frame(&mut self) -> Result<Option<Frame>, Box<dyn std::error::Error>> {
-        let mut buf = [0; 9];
-        self.stream.read_exact(&mut buf).await?;
-
-        let len = i32::from_be_bytes(buf[1..].try_into().unwrap());
-
-        let mut buf = vec![0; len as usize];
-        self.stream.read_exact(&mut buf).await?;
-    }
-
-    pub async fn write_frame(&mut self, frame: &Frame) -> Result<(), Box<dyn std::error::Error>> {
-        let mut buf = Vec::new();
-        frame.write_into(&mut buf);
-        self.stream.write_all(&buf).await?;
+        
     }
 }
