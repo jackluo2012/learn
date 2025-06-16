@@ -1,0 +1,12 @@
+[package]
+name = "web2image"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1"
+headless_chrome = "1.0.17"
+qrcode = "0.14.1"
+image = "0.25.6"
+clap = { version = "4.5.40", features = ["derive"] }
+url = "2.5.4"
