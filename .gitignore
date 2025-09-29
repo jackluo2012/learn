@@ -68,3 +68,4 @@ g4f/Provider/OpenaiChat2.py
 generated_images/
 .venv/
 思考致富.md
+docker/data/*

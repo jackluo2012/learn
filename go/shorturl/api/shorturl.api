@@ -1,0 +1,26 @@
+type (
+	expandReq {
+		shorten string `form:"shorten"`
+	}
+	expandResp {
+		url string `json:"url"`
+	}
+)
+
+type (
+	shortenReq {
+		url string `form:"url"`
+	}
+	shortenResp {
+		shorten string `json:"shorten"`
+	}
+)
+
+service shorturl-api {
+	@handler ShortenHandler
+	get /shorten (shortenReq) returns (shortenResp)
+
+	@handler ExpandHandler
+	get /expand (expandReq) returns (expandResp)
+}
+

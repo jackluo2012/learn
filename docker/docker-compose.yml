@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: dev-mysql
+    restart: always
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: devdb
+      MYSQL_USER: devuser
+      MYSQL_PASSWORD: devpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+
+  postgres:
+    image: postgres:15
+    container_name: dev-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: devuser
+      POSTGRES_PASSWORD: devpass
+      POSTGRES_DB: devdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+
+  mongo:
+    image: mongo:6
+    container_name: dev-mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: devuser
+      MONGO_INITDB_ROOT_PASSWORD: devpass
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./data/mongo:/data/db
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:23
+    container_name: dev-clickhouse
+    restart: always
+    environment:
+      CLICKHOUSE_USER: devuser
+      CLICKHOUSE_PASSWORD: devpass
+      CLICKHOUSE_DB: devdb
+    ports:
+      - "8123:8123" # HTTP
+      - "9000:9000" # Native TCP
+    volumes:
+      - ./data/clickhouse:/var/lib/clickhouse
+      - ./clickhouse/config/users.xml:/etc/clickhouse-server/users.xml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sSf http://localhost:8123/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  redis:
+    image: redis:7
+    container_name: dev-redis
+    restart: always
+    command: ["redis-server", "--requirepass", "devpass"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+
+  zookeeper:
+    image: bitnami/zookeeper:3.8
+    container_name: dev-zookeeper
+    restart: always
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    ports:
+      - "2181:2181"
+    volumes:
+      - ./data/zookeeper:/bitnami/zookeeper
+
+  kafka:
+    image: bitnami/kafka:3.6
+    container_name: dev-kafka
+    restart: always
+    environment:
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    volumes:
+      - ./data/kafka:/bitnami/kafka
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.10
+    container_name: dev-etcd
+    restart: always
+    command: >
+      etcd --name s1 --data-dir /etcd-data --advertise-client-urls http://0.0.0.0:2379
+           --listen-client-urls http://0.0.0.0:2379
+           --listen-peer-urls http://0.0.0.0:2380
+    ports:
+      - "2379:2379"
+      - "2380:2380"
+    volumes:
+      - ./data/etcd:/etcd-data
+
+  nats:
+    image: nats:2.10
+    container_name: dev-nats
+    restart: always
+    command: ["-js"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+      - "6222:6222"
+    volumes:
+      - ./data/nats:/data
+
+networks:
+  default:
+    name: dev-network
