@@ -1,0 +1,15 @@
+Name: edge.rpc
+ListenOn: 0.0.0.0:8080
+Etcd:
+  Hosts:
+  - 127.0.0.1:2379
+  Key: edge.rpc
+IMRpc:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2379
+    Key: imrpc.rpc
+KqConf:
+  Brokers:
+    - 127.0.0.1:9092
+  Topic: edge.rpc
