@@ -102,21 +102,28 @@ func (q *QueueList) Load(key string) (*kq.Pusher, bool) {
 // 返回值:
 //
 //	*QueueList: 包含从Etcd获取的队列配置信息的队列列表
+//
+// GetQueueList 函数用于创建并初始化一个队列列表
+// 参数 conf 包含Etcd的配置信息，包括主机地址和键前缀
+// 返回值是一个指向QueueList结构体的指针
 func GetQueueList(conf discov.EtcdConf) *QueueList {
+	// 创建一个新的队列列表实例
 	ql := NewQueueList()
 
 	// 创建Etcd客户端连接
+	// 配置了Etcd的主机地址和连接超时时间（3秒）
 	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   conf.Hosts,
-		DialTimeout: time.Second * 3,
+		Endpoints:   conf.Hosts,      // Etcd服务器的主机地址列表
+		DialTimeout: time.Second * 3, // 连接超时时间设置为3秒
 	})
 	if err != nil {
-		panic(err)
+		panic(err) // 如果连接失败，则panic
 	}
 
 	// 从Etcd获取指定前缀的所有键值对
+	// 设置了上下文超时时间为1秒
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	defer cancel() // 确保函数退出前取消上下文
 	// 模糊反回 edge_1,edge_2,edge_3的值
 	res, err := cli.Get(ctx, conf.Key, clientv3.WithPrefix())
 	if err != nil {
