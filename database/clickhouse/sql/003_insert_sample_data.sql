@@ -1,0 +1,7 @@
+-- 插入示例数据
+INSERT INTO web_analytics.web_logs VALUES
+('2024-01-15 10:30:00.000', 'user_001', 'session_001', '/', 'GET', 200, 150, '192.168.1.1', 'Mozilla/5.0 (Windows NT 10.0) Chrome/120.0', 'https://www.google.com', 'CN', '北京', '北京', 'Desktop', 'Chrome', 'Windows', 'text/html', 10240, 1, 0),
+('2024-01-15 10:31:00.000', 'user_001', 'session_001', '/products', 'GET', 200, 200, '192.168.1.1', 'Mozilla/5.0 (Windows NT 10.0) Chrome/120.0', 'https://example.com/', 'CN', '北京', '北京', 'Desktop', 'Chrome', 'Windows', 'text/html', 15360, 0, 0),
+('2024-01-15 10:32:00.000', 'user_002', 'session_002', '/login', 'GET', 200, 100, '192.168.1.2', 'Mozilla/5.0 (iPhone OS 17) Safari/17.0', 'https://www.baidu.com', 'US', 'New York', 'New York', 'Mobile', 'Safari', 'iOS', 'text/html', 8192, 1, 0),
+('2024-01-15 10:33:00.000', 'user_002', 'session_002', '/api/login', 'POST', 200, 500, '192.168.1.2', 'Mozilla/5.0 (iPhone OS 17) Safari/17.0', 'https://example.com/login', 'US', 'New York', 'New York', 'Mobile', 'Safari', 'iOS', 'application/json', 512, 0, 0),
+('2024-01-15 10:34:00.000', 'user_003', 'session_003', '/products/item1', 'GET', 404, 80, '192.168.1.3', 'Mozilla/5.0 (Macintosh) Firefox/119.0', 'https://www.bing.com', 'JP', 'Tokyo', 'Tokyo', 'Desktop', 'Firefox', 'macOS', 'text/html', 2048, 1, 1);

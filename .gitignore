@@ -69,3 +69,5 @@ generated_images/
 .venv/
 思考致富.md
 docker/data/*
+.spec-workflow
+data

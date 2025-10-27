@@ -1,7 +1,15 @@
 <yandex>
   <users>
+    <devuser>
+      <password>devpass</password>
+      <networks>
+        <ip>::/0</ip>
+      </networks>
+      <profile>default</profile>
+      <quota>default</quota>
+    </devuser>
     <default>
-      <password>clickhousepw</password>
+      <password>devpass</password>
       <networks>
         <ip>::/0</ip>
       </networks>
