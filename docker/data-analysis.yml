@@ -1,0 +1,281 @@
+services:
+  # Jupyter Notebook 数据分析环境
+  jupyter:
+    image: jupyter/scipy-notebook:latest
+    container_name: analysis-jupyter
+    restart: unless-stopped
+    environment:
+      JUPYTER_ENABLE_LAB: yes
+      GEN_CERT: yes
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ./data:/home/jovyan/data
+    command: start-notebook.sh --NotebookApp.password='' --NotebookApp.token=''
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8888"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # RStudio 分析环境
+  rstudio:
+    image: rocker/rstudio:latest
+    container_name: analysis-rstudio
+    restart: unless-stopped
+    environment:
+      RSTUDIO_PASSWORD: rstudio123
+      USER: analyst
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./r-projects:/home/analyst/projects
+      - ./data:/home/analyst/data
+
+  # PostgreSQL 数据仓库
+  postgres-warehouse:
+    image: postgres:17
+    container_name: analysis-postgres-warehouse
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: analyst
+      POSTGRES_PASSWORD: analyst123
+      POSTGRES_DB: datawarehouse
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres-warehouse:/var/lib/postgresql/data
+      - ./sql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U analyst"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ClickHouse 列式数据库
+  clickhouse-analytics:
+    image: clickhouse/clickhouse-server:latest
+    container_name: analysis-clickhouse
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_USER: analyst
+      CLICKHOUSE_PASSWORD: analyst123
+      CLICKHOUSE_DB: analytics
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ports:
+      - "8123:8123"  # HTTP
+      - "9000:9000"  # Native TCP
+      - "9004:9004"  # MySQL Protocol
+      - "9005:9005"  # PostgreSQL Protocol
+    volumes:
+      - ./data/clickhouse-analytics:/var/lib/clickhouse
+      - ./clickhouse/config:/etc/clickhouse-server/config.d:ro
+      - ./clickhouse/users:/etc/clickhouse-server/users.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8123/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB 文档数据库
+  mongo-analytics:
+    image: mongo:8.0
+    container_name: analysis-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: analyst
+      MONGO_INITDB_ROOT_PASSWORD: analyst123
+      MONGO_INITDB_DATABASE: analytics
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./data/mongo-analytics:/data/db
+      - ./mongo/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --eval 'db.adminCommand(\"ping\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO 对象存储
+  minio:
+    image: minio/minio:latest
+    container_name: analysis-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: analyst
+      MINIO_ROOT_PASSWORD: analyst123456
+    ports:
+      - "9000:9000"  # API
+      - "9001:9001"  # Console
+    volumes:
+      - ./data/minio:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Apache Airflow 工作流管理
+  airflow:
+    image: apache/airflow:2.9.0
+    container_name: analysis-airflow
+    restart: unless-stopped
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://analyst:analyst123@postgres-warehouse:5432/datawarehouse
+      AIRFLOW__CORE__FERNET_KEY: 'fernet-key-for-development-use-only'
+      AIRFLOW__WEBSERVER__SECRET_KEY: 'secret-key-for-development-use-only'
+      AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: airflow
+      _AIRFLOW_WWW_USER_PASSWORD: airflow123
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags:ro
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins:ro
+    depends_on:
+      postgres-warehouse:
+        condition: service_healthy
+    command: ["bash", "-c", "airflow db migrate && airflow users create --username airflow --password airflow123 --firstname Admin --lastname User --role Admin --email admin@example.com || true && airflow webserver"]
+
+  # Apache Spark Master
+  spark-master:
+    image: bitnami/spark:latest
+    container_name: analysis-spark-master
+    restart: unless-stopped
+    environment:
+      SPARK_MODE: master
+      SPARK_RPC_AUTHENTICATION_ENABLED: no
+      SPARK_RPC_ENCRYPTION_ENABLED: no
+      SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED: no
+      SPARK_SSL_ENABLED: no
+    ports:
+      - "8081:8080"  # Web UI
+      - "7077:7077"  # Master
+    volumes:
+      - ./spark:/opt/bitnami/spark
+      - ./data:/opt/spark-data
+
+  # Apache Spark Worker
+  spark-worker:
+    image: bitnami/spark:latest
+    container_name: analysis-spark-worker
+    restart: unless-stopped
+    environment:
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_WORKER_MEMORY: 2G
+      SPARK_WORKER_CORES: 2
+      SPARK_RPC_AUTHENTICATION_ENABLED: no
+      SPARK_RPC_ENCRYPTION_ENABLED: no
+      SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED: no
+      SPARK_SSL_ENABLED: no
+    depends_on:
+      - spark-master
+    volumes:
+      - ./data:/opt/spark-data
+
+  # Superset 数据可视化
+  superset:
+    image: apache/superset:latest
+    container_name: analysis-superset
+    restart: unless-stopped
+    environment:
+      SUPERSET_CONFIG_PATH: /app/superset_config.py
+      SUPERSET_LOAD_EXAMPLES: 'false'
+      ADMIN_USERNAME: admin
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: admin123
+    ports:
+      - "8088:8088"
+    volumes:
+      - ./superset/config:/app
+      - ./superset/dashboards:/app/dashboards
+    depends_on:
+      - postgres-warehouse
+      - clickhouse-analytics
+
+  # Grafana 监控仪表板
+  grafana:
+    image: grafana/grafana:latest
+    container_name: analysis-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+
+  # Redis 缓存
+  redis:
+    image: redis:latest
+    container_name: analysis-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "redis123"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # 数据库管理工具 - DBeaver Cloud
+  dbeaver:
+    image: dbeaver/cloudbeaver:latest
+    container_name: analysis-dbeaver
+    restart: unless-stopped
+    ports:
+      - "8978:8978"
+    volumes:
+      - ./data/dbeaver:/opt/cloudbeaver/workspace
+    depends_on:
+      - postgres-warehouse
+      - clickhouse-analytics
+      - mongo-analytics
+
+  # 文件浏览器 - File Browser
+  filebrowser:
+    image: filebrowser/filebrowser:latest
+    container_name: analysis-filebrowser
+    restart: unless-stopped
+    ports:
+      - "8082:80"
+    volumes:
+      - ./data:/srv
+      - ./filebrowser/database.db:/database.db
+    command: --database /database.db
+
+  # 环境监控
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: analysis-cadvisor
+    restart: unless-stopped
+    ports:
+      - "8083:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+
+networks:
+  default:
+    name: analysis-network

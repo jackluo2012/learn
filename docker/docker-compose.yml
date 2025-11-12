@@ -1,11 +1,9 @@
-version: '3.8'
 
 services:
   mysql:
-    image: mysql:8.0
+    image: mysql:9.0
     container_name: dev-mysql
     restart: always
-    command: --default-authentication-plugin=mysql_native_password
     environment:
       MYSQL_ROOT_PASSWORD: admin
       MYSQL_DATABASE: devdb
@@ -15,9 +13,13 @@ services:
       - "3306:3306"
     volumes:
       - ./data/mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
 
   postgres:
-    image: postgres:15
+    image: postgres:17
     container_name: dev-postgres
     restart: always
     environment:
@@ -28,9 +30,14 @@ services:
       - "5432:5432"
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devuser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   mongo:
-    image: mongo:6
+    image: mongo:8.0
     container_name: dev-mongo
     restart: always
     environment:
@@ -40,9 +47,14 @@ services:
       - "27017:27017"
     volumes:
       - ./data/mongo:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --eval 'db.adminCommand(\"ping\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   clickhouse:
-    image: clickhouse/clickhouse-server:23
+    image: clickhouse/clickhouse-server:latest
     container_name: dev-clickhouse
     restart: always
     environment:
@@ -60,8 +72,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
   redis:
-    image: redis:7
+    image: redis:latest
     container_name: dev-redis
     restart: always
     command: ["redis-server", "--requirepass", "devpass"]
@@ -69,36 +82,14 @@ services:
       - "6379:6379"
     volumes:
       - ./data/redis:/data
-
-  zookeeper:
-    image: bitnami/zookeeper:3.8
-    container_name: dev-zookeeper
-    restart: always
-    environment:
-      ALLOW_ANONYMOUS_LOGIN: "yes"
-    ports:
-      - "2181:2181"
-    volumes:
-      - ./data/zookeeper:/bitnami/zookeeper
-
-  kafka:
-    image: bitnami/kafka:3.6
-    container_name: dev-kafka
-    restart: always
-    environment:
-      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092
-      ALLOW_PLAINTEXT_LISTENER: "yes"
-    depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
-    volumes:
-      - ./data/kafka:/bitnami/kafka
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   etcd:
-    image: quay.io/coreos/etcd:v3.5.10
+    image: quay.io/coreos/etcd:v3.5.16
     container_name: dev-etcd
     restart: always
     command: >
@@ -110,9 +101,14 @@ services:
       - "2380:2380"
     volumes:
       - ./data/etcd:/etcd-data
+    healthcheck:
+      test: ["CMD-SHELL", "etcdctl endpoint health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   nats:
-    image: nats:2.10
+    image: nats:latest
     container_name: dev-nats
     restart: always
     command: ["-js"]
@@ -122,6 +118,11 @@ services:
       - "6222:6222"
     volumes:
       - ./data/nats:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8222/varz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 networks:
   default:
