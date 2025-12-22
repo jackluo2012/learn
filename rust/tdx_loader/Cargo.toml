@@ -1,0 +1,9 @@
+[package]
+name = "tdx_loader"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.100"
+reqwest = {version = "0.12.26", features = ["blocking"]}
+zip = "7.0.0"
