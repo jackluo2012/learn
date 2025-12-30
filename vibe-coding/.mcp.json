@@ -1,0 +1,14 @@
+{
+    "mcpServers": {
+        "mysql": {
+            "command": "mysql-mcp-server",
+            "env": {
+                "MYSQL_HOST": "192.168.1.22",
+                "MYSQL_USER": "xingzheng",
+                "MYSQL_PASSWORD": "Mmcy3pAhLbbCZdbR",
+                "MYSQL_DATABASE": "xingzheng",
+                "MYSQL_PORT": "3306"
+            }
+        }
+    }
+}
