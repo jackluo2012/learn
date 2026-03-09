@@ -1,0 +1,4 @@
+.env
+.omc/*
+.pytest_cache/*
+.python-version
