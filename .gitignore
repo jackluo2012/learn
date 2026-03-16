@@ -71,3 +71,8 @@ generated_images/
 docker/data/*
 .spec-workflow
 data
+.omc/**
+.env
+.omc/*
+.pytest_cache/*
+.python-version
