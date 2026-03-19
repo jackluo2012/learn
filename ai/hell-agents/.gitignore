@@ -2,3 +2,4 @@
 .omc/*
 .pytest_cache/*
 .python-version
+memory/**
