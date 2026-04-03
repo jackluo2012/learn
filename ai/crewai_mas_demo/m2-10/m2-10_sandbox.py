@@ -78,7 +78,6 @@ sandbox_agent = Agent(
         )
     ],
     llm=aliyun_llm.AliyunLLM(
-        model="qwen3-max",
         api_key=os.getenv("QWEN_API_KEY"),
         region="cn",
     ),
@@ -116,7 +115,6 @@ assistant_agent = Agent(
     allow_delegation=True,
     tools=[IntermediateTool()],
     llm=aliyun_llm.AliyunLLM(
-        model="qwen3-max",
         api_key=os.getenv("QWEN_API_KEY"),
         region="cn",
     ),

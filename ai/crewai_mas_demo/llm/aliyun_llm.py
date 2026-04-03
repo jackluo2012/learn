@@ -63,7 +63,7 @@ class AliyunLLM(BaseLLM):
     }
     def __init__(
         self,
-        model: str,
+        model: str | None = None,
         image_model: str | None = None,
         api_key: str | None = None,
         region: str = "cn",
@@ -75,13 +75,16 @@ class AliyunLLM(BaseLLM):
         初始化阿里云 LLM。
 
         Args:
-            model: 模型名称，如 "qwen-plus", "qwen-turbo" 等
+            model: 模型名称，如 "qwen-plus", "qwen-turbo" 等；不提供则从环境变量 LLM_MODEL_ID 读取
             api_key: API Key，不提供则从环境变量 QWEN_API_KEY 或 DASHSCOPE_API_KEY 读取
             region: 地域 "cn" / "intl" / "finance"
             temperature: 采样温度
             timeout: 请求超时（秒），默认 600
             retry_count: 请求失败时的重试次数，默认 2；可从环境变量 LLM_RETRY_COUNT 读取
         """
+        # 从环境变量读取模型名称，如果未指定则使用默认值
+        if model is None:
+            model = os.getenv("LLM_MODEL_ID", "qwen-max")
         super().__init__(model=model, temperature=temperature)
 
         self.api_key = (
@@ -538,7 +541,7 @@ class AliyunLLM(BaseLLM):
 if __name__ == "__main__":
     # 创建阿里云 LLM 实例
     llm = AliyunLLM(
-        model="qwen-plus",
+        # model 参数可选，会从环境变量 LLM_MODEL_ID 读取，默认值 "qwen-max"
         # api_key 参数可选，会从环境变量 QWEN_API_KEY 或 DASHSCOPE_API_KEY 读取
         # 或直接传入 "sk-xxx"
         region="cn",  # 或 "intl", "finance"

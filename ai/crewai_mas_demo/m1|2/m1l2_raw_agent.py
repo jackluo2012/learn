@@ -68,7 +68,6 @@ class RawAgent:
         ]
         # 3. 初始化 LLM
         llm = AliyunLLM(
-            model="qwen-turbo",
             api_key=os.getenv("QWEN_API_KEY"),
             region="cn",  # 使用 region 参数，可选值: "cn", "intl", "finance"
         )

@@ -1,0 +1,16 @@
+# 💡 核心点：type 字段区分两种执行方式，不改官方 SKILL.md 文件
+skills:
+  - name: pdf
+    path: ./skills/pdf
+    type: task          # 需要代码执行（pypdf/OCR）
+    enabled: true
+
+  - name: docx
+    path: ./skills/docx
+    type: task          # 需要代码执行（python-docx/LibreOffice）
+    enabled: true
+
+  # 参考型 Skill 示例（只注入上下文，不触发 Sub-Crew）
+  # - name: brand-guidelines
+  #   type: reference
+  #   enabled: false    

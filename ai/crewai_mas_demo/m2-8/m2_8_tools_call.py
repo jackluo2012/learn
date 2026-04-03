@@ -171,7 +171,6 @@ crontab_manager_agent = Agent(
     verbose = True,
     allow_delegation = False,
     llm = aliyun_llm.AliyunLLM(
-        model = "qwen-plus",
         api_key = os.getenv("QWEN_API_KEY"),
         region = "cn",
     ),

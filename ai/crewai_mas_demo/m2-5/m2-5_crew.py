@@ -176,7 +176,6 @@ content_strategist = Agent(
     tools=[IntermediateTool()],
     output_pydantic=ContentStrategyBrief,
     llm=AliyunLLM(
-        model="qwen-plus",
         api_key=os.getenv("QWEN_API_KEY"),
         region="cn",
     ),
@@ -213,7 +212,6 @@ content_writer = Agent(
     tools=[IntermediateTool()],
     output_pydantic=CopywritingOutput,
     llm=AliyunLLM(
-        model="qwen-plus",
         api_key=os.getenv("QWEN_API_KEY"),
         region="cn",
     ),
@@ -251,7 +249,6 @@ seo_optimizer = Agent(
     tools=[IntermediateTool()],
     output_pydantic=SEOOptimizedNoteReport,
     llm=AliyunLLM(
-        model="qwen-plus",
         api_key=os.getenv("QWEN_API_KEY"),
         region="cn",
     ),

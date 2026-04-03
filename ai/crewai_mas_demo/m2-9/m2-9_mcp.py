@@ -83,7 +83,6 @@ email_agent = Agent(
         tool_filter=static_filter,  # 工具过滤器，限制可用工具
     )],
     llm=aliyun_llm.AliyunLLM(
-        model="qwen-plus",
         api_key=os.getenv("QWEN_API_KEY"),
         region="cn",  # 使用 region 参数，可选值: "cn", "intl", "finance"
     ),

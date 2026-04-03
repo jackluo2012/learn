@@ -44,7 +44,6 @@ content_strategist = Agent(
     allow_delegation=False,
     tools=[IntermediateTool()],
     llm=AliyunLLM(
-        model="qwen-plus",
         api_key=os.getenv("QWEN_API_KEY"),
         region="cn",
     ),

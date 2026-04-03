@@ -140,7 +140,6 @@ image_analyst = Agent(
     multimodal=False,  # 使用 AddImageToolLocal 替代默认 AddImageTool，无需 multimodal=True
     llm=AliyunLLM(
         image_model="qwen3-vl-plus",
-        model="qwen-plus",  # 使用支持多模态的模型
         api_key=os.getenv("QWEN_API_KEY"),
         region="cn",
     ),
