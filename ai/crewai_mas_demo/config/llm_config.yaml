@@ -1,0 +1,73 @@
+# LLM 模型配置文件
+# 所有项目中使用的大模型必须在此配置文件中定义
+# 如果配置中未提供的模型，不允许调用大模型
+
+# 默认模型配置
+default:
+  text_model: "qwen-max"          # 默认文本模型
+  image_model: "qwen3-vl-plus"    # 默认多模态/视觉模型
+  summary_model: "qwen3-turbo"    # 摘要/轻量任务模型
+  region: "cn"                    # 默认地域: cn, intl, finance
+  temperature: 0.7                # 默认温度
+  retry_count: 2                  # 默认重试次数
+  timeout: 600                    # 默认超时时间(秒)
+
+# 特定用途模型配置
+models:
+  # 主助手模型 - 用于复杂任务和主要Agent
+  assistant:
+    model: "qwen3-max"
+    temperature: 0.7
+    
+  # 轻量级模型 - 用于摘要、简单任务
+  lightweight:
+    model: "qwen3-turbo"
+    temperature: 0.3
+    
+  # 视觉模型 - 用于图片分析、多模态任务
+  vision:
+    model: "qwen3-vl-plus"
+    temperature: 0.7
+    
+  # 代码专用模型
+  coder:
+    model: "qwen-coder-plus"
+    temperature: 0.3
+    
+  # 长文本模型
+  long_context:
+    model: "qwen-long"
+    temperature: 0.7
+
+# 可用模型白名单（只有在此列表中的模型才允许调用）
+allowed_models:
+  - "qwen-max"
+  - "qwen-max-latest"
+  - "qwen-max-2025-01-25"
+  - "qwen-plus"
+  - "qwen-plus-latest"
+  - "qwen-plus-2025-07-28"
+  - "qwen-turbo"
+  - "qwen-turbo-latest"
+  - "qwen3-max"
+  - "qwen3-max-preview"
+  - "qwen3-max-2025-09-23"
+  - "qwen3-turbo"
+  - "qwen3-vl-plus"
+  - "qwen3-vl-plus-2025-09-23"
+  - "qwen-vl-plus"
+  - "qwen-vl-plus-latest"
+  - "qwen-long"
+  - "qwen-long-latest"
+  - "qwen-coder-plus"
+  - "qwen-coder-plus-latest"
+  - "deepseek-r1"
+  - "kimi-k2.5"
+  - "qwen-flash"
+  - "qwen-flash-2025-07-28"
+
+# API 端点配置
+endpoints:
+  cn: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+  intl: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions"
+  finance: "https://dashscope-finance.aliyuncs.com/compatible-mode/v1/chat/completions"

@@ -9,6 +9,7 @@
 4. Function Calling：支持工具调用
 5. 多模态支持：支持图片输入（多模态消息）
 6. 多地域支持：支持 cn、intl、finance 三个地域
+7. 配置驱动：所有模型名称从配置文件读取，支持白名单校验
 
 本实现是课程的核心组件，所有示例代码都依赖此 LLM 实现。
 通过自定义 LLM，我们可以在不依赖 OpenAI API 的情况下使用 CrewAI 框架。
@@ -18,6 +19,7 @@
 - 错误处理：如何处理 API 错误和重试
 - Function Calling：如何实现工具调用机制
 - 多模态支持：如何处理图片输入
+- 配置管理：如何通过配置文件统一管理模型
 """
 
 from __future__ import annotations
@@ -27,11 +29,19 @@ import json
 import logging
 import os
 import re
+import sys
 from pathlib import Path
 from typing import Any, Tuple
 
 import requests
 from crewai import BaseLLM
+
+# 添加项目根目录到路径，以便导入 config 模块
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
+from config import llm_config
 
 
 def _get_logger():
@@ -55,36 +65,54 @@ logger = _get_logger()
 
 
 class AliyunLLM(BaseLLM):
-    """阿里云通义千问 LLM 实现类，支持重试与异步调用。"""
+    """阿里云通义千问 LLM 实现类，支持重试与异步调用。
+    
+    所有模型名称必须通过配置文件 config/llm_config.yaml 定义，
+    如果模型不在 allowed_models 白名单中，将抛出 ValueError。
+    """
     ENDPOINTS = {
         "cn": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
         "intl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",
         "finance": "https://dashscope-finance.aliyuncs.com/compatible-mode/v1/chat/completions",
     }
+    
     def __init__(
         self,
         model: str | None = None,
         image_model: str | None = None,
         api_key: str | None = None,
-        region: str = "cn",
+        region: str | None = None,
         temperature: float | None = None,
-        timeout: int = 600,
+        timeout: int | None = None,
         retry_count: int | None = None,
     ) -> None:
         """
         初始化阿里云 LLM。
 
         Args:
-            model: 模型名称，如 "qwen-plus", "qwen-turbo" 等；不提供则从环境变量 LLM_MODEL_ID 读取
+            model: 模型名称，如 "qwen-plus", "qwen-turbo" 等；
+                   不提供则从配置文件 default.text_model 读取
+            image_model: 多模态模型名称；不提供则从配置文件 default.image_model 读取
             api_key: API Key，不提供则从环境变量 QWEN_API_KEY 或 DASHSCOPE_API_KEY 读取
-            region: 地域 "cn" / "intl" / "finance"
-            temperature: 采样温度
-            timeout: 请求超时（秒），默认 600
-            retry_count: 请求失败时的重试次数，默认 2；可从环境变量 LLM_RETRY_COUNT 读取
+            region: 地域 "cn" / "intl" / "finance"；不提供则从配置文件读取
+            temperature: 采样温度；不提供则从配置文件读取
+            timeout: 请求超时（秒）；不提供则从配置文件读取
+            retry_count: 请求失败时的重试次数；不提供则从配置文件读取
+            
+        Raises:
+            ValueError: 如果指定的模型不在 allowed_models 白名单中
         """
-        # 从环境变量读取模型名称，如果未指定则使用默认值
+        # 从配置文件读取默认值
         if model is None:
-            model = os.getenv("LLM_MODEL_ID", "qwen-max")
+            model = os.getenv("LLM_MODEL_ID") or llm_config.get_default_model()
+        
+        # 验证模型是否在白名单中
+        llm_config.validate_model(model)
+        
+        # 设置温度
+        if temperature is None:
+            temperature = llm_config.default_temperature
+            
         super().__init__(model=model, temperature=temperature)
 
         self.api_key = (
@@ -95,23 +123,38 @@ class AliyunLLM(BaseLLM):
                 "API Key 未提供。请通过 api_key 传入或设置环境变量 QWEN_API_KEY 或 DASHSCOPE_API_KEY"
             )
 
+        # 设置地域
+        if region is None:
+            region = llm_config.default_region
         if region not in self.ENDPOINTS:
             raise ValueError(
                 f"不支持的地域: {region}，支持: {list(self.ENDPOINTS.keys())}"
             )
         self.endpoint = self.ENDPOINTS[region]
         self.region = region
+        
+        # 设置超时
+        if timeout is None:
+            timeout = llm_config.default_timeout
         self.timeout = timeout
+        
+        # 设置多模态模型
         self.image_model = image_model
         if not self.image_model:
-            self.image_model = "qwen3-vl-plus"
+            self.image_model = llm_config.get_default_image_model()
+        # 验证多模态模型
+        llm_config.validate_model(self.image_model)
+        
+        # 设置重试次数
         _rc = retry_count
         if _rc is None and os.getenv("LLM_RETRY_COUNT") is not None:
             try:
                 _rc = int(os.getenv("LLM_RETRY_COUNT", "2"))
             except ValueError:
-                _rc = 2
-        self.retry_count = _rc if _rc is not None else 2
+                _rc = llm_config.default_retry_count
+        if _rc is None:
+            _rc = llm_config.default_retry_count
+        self.retry_count = _rc
 
     def _normalize_multimodal_tool_result(
         self, messages: list[dict[str, Any]]
@@ -540,12 +583,13 @@ class AliyunLLM(BaseLLM):
 # 使用示例
 if __name__ == "__main__":
     # 创建阿里云 LLM 实例
+    # 所有模型名称从 config/llm_config.yaml 配置文件读取
+    # 如果指定的模型不在 allowed_models 白名单中，将抛出 ValueError
     llm = AliyunLLM(
-        # model 参数可选，会从环境变量 LLM_MODEL_ID 读取，默认值 "qwen-max"
+        # model 参数可选，优先级：传入值 > 环境变量 LLM_MODEL_ID > 配置文件 default.text_model
         # api_key 参数可选，会从环境变量 QWEN_API_KEY 或 DASHSCOPE_API_KEY 读取
         # 或直接传入 "sk-xxx"
-        region="cn",  # 或 "intl", "finance"
-        temperature=0.7,
+        # region/temperature/timeout/retry_count 均可从配置文件读取
     )
 
     # 测试基本调用

@@ -189,7 +189,9 @@ def chunk_by_tokens(
 
 def _summarize_chunk(messages: list[dict]) -> str:
     """用轻量模型生成摘要，节省成本（可 mock 用于测试）"""
-    summary_llm = LLM(model="qwen3-turbo")
+    from config import llm_config
+    summary_model = llm_config.get_default_summary_model()
+    summary_llm = LLM(model=summary_model)
     history = "\n".join(
         f"{m.get('role', '')}: {str(m.get('content', ''))[:300]}"
         for m in messages
@@ -271,7 +273,7 @@ class JackClawCrew:
             goal      = "帮助jack高效完成各类任务，严谨、结果导向",
             backstory = build_bootstrap_prompt(WORKSPACE_DIR),  # 💡 Bootstrap 在这里
             llm       = aliyun_llm.AliyunLLM(
-                model   = "qwen3-max",
+                # 模型从配置文件读取，不再硬编码
                 api_key = os.getenv("QWEN_API_KEY"),
                 region  = "cn",
             ),
@@ -366,7 +368,7 @@ SESSION_ID = "demo"
 DEMO_ROUNDS = [
     (
         "调研任务",
-        "帮我调研空调4月份要发的产品，生成一份调研报告保存到文件",
+        "帮我调研空调4月份要发的产品,现在需要在出租屋里安装2台空调，1P和1.5p都行，给我生成对应配置，以及价格，空调要求，安静省钱，生成一份调研报告保存到文件",
     ),
     (
         "结论提炼",

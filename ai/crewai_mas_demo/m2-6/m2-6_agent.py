@@ -139,7 +139,7 @@ image_analyst = Agent(
     output_pydantic=ImageAnalysis,  # 指定结构化输出模型
     multimodal=False,  # 使用 AddImageToolLocal 替代默认 AddImageTool，无需 multimodal=True
     llm=AliyunLLM(
-        image_model="qwen3-vl-plus",
+        # image_model 从配置文件读取，不再硬编码
         api_key=os.getenv("QWEN_API_KEY"),
         region="cn",
     ),
@@ -226,7 +226,7 @@ print("开始执行多模态视觉分析任务...")
 print("=" * 80)
 print(f"图片路径: {image_path}")
 print(f"Agent: {image_analyst.role}")
-print(f"模型: qwen3-vl-plus")
+print(f"模型: 从配置文件读取")
 print("=" * 80)
 
 try:

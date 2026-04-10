@@ -93,7 +93,12 @@ def build_skill_crew(
         #tool_filter=SANDBOX_TOOL_FILTER, # 暂时不使用工具过滤，因为目前工具都用得上
     )
 
-    skill_llm = AliyunLLM(region="cn", temperature=0.3)
+    # 从配置文件读取模型配置
+    from config import llm_config
+    skill_llm = AliyunLLM(
+        region=llm_config.default_region,
+        temperature=llm_config.get_model_config("lightweight").get("temperature", 0.3)
+    )
 
     skill_agent = Agent(
         role=f"{skill_name.upper()} Skill 执行专家",

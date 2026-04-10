@@ -91,10 +91,21 @@ class BaiduSearchInput(BaseModel):
             )
         return v
 
-    @field_validator("top_k")
+    @field_validator("top_k", mode="before")
     @classmethod
-    def validate_top_k(cls, v: int) -> int:
-        """验证top_k范围"""
+    def validate_top_k(cls, v) -> int:
+        """验证top_k范围，自动处理字符串输入（如 '5.0'）"""
+        # 处理字符串输入，支持 '5', '5.0', '5.5' 等格式
+        if isinstance(v, str):
+            try:
+                v = int(float(v))
+            except (ValueError, TypeError) as e:
+                raise ValueError(
+                    f"错误：top_k参数值无效。"
+                    f"原因：无法将值'{v}'转换为整数，错误详情：{str(e)}。"
+                    f"解决提示：请提供整数或可转换为整数的字符串（支持 '5', '5.0' 等格式）。"
+                )
+        # 验证范围
         if v < 0:
             raise ValueError(
                 f"错误：top_k参数值无效。"
