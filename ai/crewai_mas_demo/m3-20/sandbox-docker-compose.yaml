@@ -1,0 +1,19 @@
+# m3l20 专用沙盒配置
+# 与 m2l16（根目录 sandbox-docker-compose.yaml）的区别：
+#   - workspace 整体挂载为 :rw（memory-save 可写任意 workspace 文件）
+#   - skills 挂载改为 :rw（skill-creator 可以写新 SKILL.md + 更新 load_skills.yaml）
+#
+# 使用方式：
+#   cd crewai_mas_demo/m3l20 && docker compose -f sandbox-docker-compose.yaml up -d
+
+version: "3.8"
+services:
+  aio-sandbox:
+    image: ghcr.io/agent-infra/sandbox:latest   # 与根目录保持一致
+    ports:
+      - "8022:8080"   # Sandbox MCP 端点：http://localhost:8022/mcp
+    volumes:
+      - ./workspace:/workspace:rw       # 💡 整个 workspace 可读写（m2l16 是 data:ro）
+      - ../skills:/mnt/skills:rw        # 💡 共享 skills/ 改为 rw（m2l16 是 :ro）
+    security_opt:
+      - seccomp:unconfined

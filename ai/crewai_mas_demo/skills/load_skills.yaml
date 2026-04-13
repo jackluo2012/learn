@@ -1,16 +1,40 @@
-# 💡 核心点：type 字段区分两种执行方式，不改官方 SKILL.md 文件
+# Skill 清单：m2l16 Skills 生态课程演示
+#
+# type 字段区分 Skill 的执行方式：
+#   task      → 触发独立 Sub-Crew 在 AIO-Sandbox 中执行（需要代码运行）
+#   reference → 直接注入指令到调用方上下文，不启动 Sub-Crew（只读规范类）
+#
+# 💡 核心点：type 写在这里，不改 Anthropic 官方 SKILL.md 文件
+
 skills:
   - name: pdf
-    path: ./skills/pdf
-    type: task          # 需要代码执行（pypdf/OCR）
+    path: ./pdf
+    type: task       # 需要代码执行（pypdf / pdfplumber）
     enabled: true
 
   - name: docx
-    path: ./skills/docx
-    type: task          # 需要代码执行（python-docx/LibreOffice）
+    path: ./docx
+    type: task       # 需要代码执行（docx-js / pandoc）
     enabled: true
 
-  # 参考型 Skill 示例（只注入上下文，不触发 Sub-Crew）
+  # m3l20：文件系统记忆 Skills
+  - name: memory-save
+    path: ./memory-save
+    type: task       # 写入 workspace/ 文件，需要沙盒 MCP 执行
+    enabled: true
+
+  - name: skill-creator
+    path: ./skill-creator
+    type: task       # 写入 skills/ 目录，需要沙盒 MCP 执行
+    enabled: true
+
+  - name: memory-governance
+    path: ./memory-governance
+    type: task       # 扫描 + 报告 + 清理，需要沙盒 MCP 执行
+    enabled: true
+
+  # 预留：参考型 Skill 示例（如品牌规范、代码规范等）
   # - name: brand-guidelines
-  #   type: reference
-  #   enabled: false    
+  #   path: ./brand-guidelines
+  #   type: reference   # 只读指令，不执行脚本
+  #   enabled: false
