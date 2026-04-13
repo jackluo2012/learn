@@ -3,3 +3,4 @@ workspace/**
 # NTFS Alternate Data Streams (Windows Zone.Identifier - Mark of the Web)
 *:Zone.Identifier
 :*
+quota.json
