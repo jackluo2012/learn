@@ -1,11 +1,84 @@
+# ============================================================
+# LLM 多平台配置
+# 支持: aliyun (DashScope), openrouter, 以及任何 OpenAI 兼容 API
+# ============================================================
+
+# 默认 provider（优先使用）
 default:
+  provider: aliyun
   text_model: qwen-max
   image_model: qvq-plus
   summary_model: qwen3-turbo
-  region: cn
   temperature: 0.7
   retry_count: 2
   timeout: 600
+
+# ============================================================
+# Provider 定义
+# 每个 provider 必须包含: base_url, api_key_env
+# api_key_env: 环境变量名，运行时从 .env 或系统环境变量读取
+# ============================================================
+providers:
+  aliyun:
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    api_key_env: QWEN_API_KEY
+    # 可选: 额外 headers
+    extra_headers: {}
+    # 该 provider 下可用的模型列表
+    models:
+      - qwen-max
+      - qwen-max-latest
+      - qwen-max-2025-01-25
+      - qwen-plus-latest
+      - qwen-plus-2025-07-28
+      - qwen-turbo
+      - qwen-turbo-latest
+      - qwen3.5-plus
+      - qwen3-max-2025-09-23
+      - qwen3-turbo
+      - qvq-plus
+      - qwen3-vl-plus-2025-09-23
+      - qwen-vl-plus
+      - qwen-vl-plus-latest
+      - qwen-long
+      - qwen-long-latest
+      - qwen-coder-plus
+      - qwen-coder-plus-latest
+      - deepseek-r1
+      - kimi-k2.5
+      - qwen-flash
+      - qwen-flash-2025-07-28
+    # 可选: 旧版多地域 endpoints（仅 aliyun 原生 SDK 使用）
+    endpoints:
+      cn: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+      intl: https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions
+      finance: https://dashscope-finance.aliyuncs.com/compatible-mode/v1/chat/completions
+
+  openrouter:
+    base_url: https://openrouter.ai/api/v1
+    api_key_env: OPENROUTER_API_KEY
+    extra_headers:
+      HTTP-Referer: https://github.com/crewai-mas-demo
+      X-Title: crewai-mas-demo
+    models:
+      - openai/gpt-4o
+      - openai/gpt-4.1
+      - openai/gpt-4.1-mini
+      - openai/gpt-4.1-nano
+      - anthropic/claude-sonnet-4-20250514
+      - anthropic/claude-3.5-haiku
+      - google/gemini-2.5-flash
+      - google/gemini-2.5-pro
+      - deepseek/deepseek-chat
+      - deepseek/deepseek-r1-0528
+      - meta-llama/llama-3.3-70b-instruct
+      - qwen/qwen3-235b-a22b
+
+# ============================================================
+# 角色模型映射
+# 可以直接指定模型名（使用 default provider）
+# 也可以用 provider/model 格式指定特定 provider 的模型
+# ============================================================
 models:
   assistant:
     model: qwen3.5-plus
@@ -22,29 +95,42 @@ models:
   long_context:
     model: qwen-long
     temperature: 0.7
+
+# ============================================================
+# 向后兼容: allowed_models（旧接口，合并所有 provider 的模型列表）
+# ============================================================
 allowed_models:
-- qwen-max
-- qwen-max-latest
-- qwen-max-2025-01-25
-- qwen-plus-latest
-- qwen-plus-2025-07-28
-- qwen-turbo
-- qwen-turbo-latest
-- qwen3.5-plus
-- qwen3-max-2025-09-23
-- qwen3-turbo
-- qvq-plus
-- qwen3-vl-plus-2025-09-23
-- qwen-vl-plus
-- qwen-vl-plus-latest
-- qwen-long
-- qwen-long-latest
-- qwen-coder-plus
-- qwen-coder-plus-latest
-- deepseek-r1
-- kimi-k2.5
-- qwen-flash
-- qwen-flash-2025-07-28
+  - qwen-max
+  - qwen-max-latest
+  - qwen-max-2025-01-25
+  - qwen-plus-latest
+  - qwen-plus-2025-07-28
+  - qwen-turbo
+  - qwen-turbo-latest
+  - qwen3.5-plus
+  - qwen3-max-2025-09-23
+  - qwen3-turbo
+  - qvq-plus
+  - qwen3-vl-plus-2025-09-23
+  - qwen-vl-plus
+  - qwen-vl-plus-latest
+  - qwen-long
+  - qwen-long-latest
+  - qwen-coder-plus
+  - qwen-coder-plus-latest
+  - deepseek-r1
+  - kimi-k2.5
+  - qwen-flash
+  - qwen-flash-2025-07-28
+  # OpenRouter 模型
+  - openai/gpt-4o
+  - openai/gpt-4.1
+  - anthropic/claude-sonnet-4-20250514
+  - google/gemini-2.5-flash
+  - google/gemini-2.5-pro
+  - deepseek/deepseek-r1-0528
+
+# 向后兼容: 旧 endpoints 键（AliyunLLM 使用）
 endpoints:
   cn: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
   intl: https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions
