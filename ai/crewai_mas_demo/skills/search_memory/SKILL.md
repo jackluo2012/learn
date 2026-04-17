@@ -1,6 +1,6 @@
 ---
 name: search_memory
-description: "搜索 XiaoPaw 的历史对话记忆。当用户询问过去发生的事、之前的偏好、历史任务结果时使用。支持语义搜索（'上次那个航班'）、关键字搜索（'PDF转换'）、混合搜索（'上周的工作文件'）。"
+description: "搜索 jackclaw 的历史对话记忆。当用户询问过去发生的事、之前的偏好、历史任务结果时使用。支持语义搜索（'上次那个航班'）、关键字搜索（'PDF转换'）、混合搜索（'上周的工作文件'）。"
 type: task
 version: "1.0"
 ---
@@ -9,14 +9,14 @@ version: "1.0"
 
 ## 功能说明
 
-在 pgvector 数据库中搜索 XiaoPaw 的历史对话记忆，支持三种搜索模式的混合使用。
+在 pgvector 数据库中搜索 jackclaw 的历史对话记忆，支持三种搜索模式的混合使用。
 
 ---
 
 ## 数据库结构
 
 连接信息（从环境变量读取）：
-- DSN：`MEMORY_DB_DSN`，默认 `postgresql://xiaopaw:xiaopaw123@localhost:5432/xiaopaw_memory`
+- DSN：`MEMORY_DB_DSN`，默认 `postgresql://jackclaw:jackclaw123@localhost:5432/jackclaw_memory`
 
 `memories` 表字段说明：
 

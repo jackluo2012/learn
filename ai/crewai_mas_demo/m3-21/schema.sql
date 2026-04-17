@@ -1,0 +1,56 @@
+-- 第21课：搜索驱动的记忆系统
+-- 运行前：docker compose up -d
+-- 💡 核心点：向量只是普通列（vector 类型），和标量字段在同一张表
+
+CREATE EXTENSION IF NOT EXISTS vector;  -- 启用 pgvector 扩展
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 记忆主表
+-- 每一行 = jackclaw 一轮对话（user + assistant 一问一答）
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS memories (
+    id              TEXT        PRIMARY KEY,          -- session_id + 轮次序号
+    session_id      TEXT        NOT NULL,             -- 来源 session
+    routing_key     TEXT        NOT NULL,             -- 用户标识（p2p:ou_xxx）
+
+    -- 原始内容
+    user_message    TEXT        NOT NULL,             -- 用户原始消息
+    assistant_reply TEXT        NOT NULL,             -- 助手回复
+
+    -- LLM 提取的结构化字段（qwen3-turbo 提取）
+    summary         TEXT        NOT NULL,             -- 一句话摘要（向量化）
+    tags            TEXT[]      NOT NULL DEFAULT '{}', -- 领域标签（标量过滤）
+
+    -- 时间元数据
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    turn_ts         BIGINT      NOT NULL,             -- 原始对话时间戳（毫秒）
+
+    -- 💡 核心点：向量就是普通列，不是独立的向量数据库
+    summary_vec     vector(1024),                     -- 摘要语义向量
+    message_vec     vector(1024),                     -- 原始对话语义向量
+
+    -- 全文搜索列（BM25 近似，PostgreSQL 内置）
+    search_text     TEXT        NOT NULL DEFAULT '',  -- user_message + tags 拼接
+    search_tsv      TSVECTOR    GENERATED ALWAYS AS (to_tsvector('simple', search_text)) STORED
+    -- 💡 核心点：search_tsv 自动维护，写入 search_text 即可，无需手动更新
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 索引
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- 向量索引（HNSW，近似最近邻，牺牲少量精度换性能）
+CREATE INDEX IF NOT EXISTS memories_summary_vec_idx
+    ON memories USING hnsw (summary_vec vector_cosine_ops);
+
+CREATE INDEX IF NOT EXISTS memories_message_vec_idx
+    ON memories USING hnsw (message_vec vector_cosine_ops);
+
+-- 全文索引（BM25 近似）
+CREATE INDEX IF NOT EXISTS memories_search_tsv_idx
+    ON memories USING gin (search_tsv);
+
+-- 标量索引（时间范围、用户过滤）
+CREATE INDEX IF NOT EXISTS memories_routing_key_idx ON memories (routing_key);
+CREATE INDEX IF NOT EXISTS memories_created_at_idx  ON memories (created_at DESC);
+CREATE INDEX IF NOT EXISTS memories_tags_idx        ON memories USING gin (tags);

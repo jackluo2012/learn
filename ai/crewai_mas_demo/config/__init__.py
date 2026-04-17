@@ -59,7 +59,12 @@ class LLMConfig:
     
     @property
     def default_provider(self) -> str:
-        """获取默认 provider 名称"""
+        """获取默认 provider 名称（环境变量 DEFAULT_PROVIDER 优先）"""
+        env_provider = os.getenv("DEFAULT_PROVIDER")
+        if env_provider:
+            providers = self._config.get("providers", {})
+            if env_provider in providers:
+                return env_provider
         return self._config.get("default", {}).get("provider", "aliyun")
     
     def get_provider_config(self, provider: str | None = None) -> dict:

@@ -104,16 +104,39 @@ def create_llm(
         model = os.getenv("LLM_MODEL_ID") or llm_config.get_default_model()
     
     if temperature is None:
-        temperature = llm_config.default_temperature
+        temperature = float(os.getenv("LLM_TEMPERATURE", "")) if os.getenv("LLM_TEMPERATURE") else llm_config.default_temperature
     
     if timeout is None:
-        timeout = llm_config.default_timeout
+        timeout = int(os.getenv("LLM_TIMEOUT", "")) if os.getenv("LLM_TIMEOUT") else llm_config.default_timeout
 
     # 2. 解析 model → provider
     resolved_provider, resolved_model = llm_config.resolve_model_provider(model)
     
-    # 显式 provider 优先
-    final_provider = provider or resolved_provider
+    # 决定最终 provider（优先级：显式参数 > 模型中的 provider 前缀 > DEFAULT_PROVIDER > 自动解析）
+    if provider:
+        # 用户代码显式指定，最高优先级
+        final_provider = provider
+    elif "/" in model and resolved_provider != llm_config.default_provider:
+        # 模型名带 provider 前缀（如 "openai/gpt-4o"），尊重模型指定的 provider
+        final_provider = resolved_provider
+    elif llm_config.default_provider != resolved_provider:
+        # DEFAULT_PROVIDER 与模型原始 provider 不同
+        # 检查模型是否也在 DEFAULT_PROVIDER 的列表中
+        default_models = llm_config.get_provider_models(llm_config.default_provider)
+        if model in default_models:
+            final_provider = llm_config.default_provider
+        else:
+            # 模型不在 DEFAULT_PROVIDER 中，强制走 DEFAULT_PROVIDER 并自动切换模型
+            final_provider = llm_config.default_provider
+            if default_models:
+                old_model = resolved_model
+                resolved_model = default_models[0]
+                logger.info(
+                    "DEFAULT_PROVIDER=%s，模型 '%s' 不在该平台，自动切换到 '%s'",
+                    final_provider, old_model, resolved_model,
+                )
+    else:
+        final_provider = resolved_provider
 
     # 3. 获取 provider 配置
     base_url = llm_config.get_provider_base_url(final_provider)
@@ -132,10 +155,17 @@ def create_llm(
                 f"或设置通用 LLM_API_KEY 来使用默认 provider。"
             )
 
-    # base_url 回退：仅当使用默认 provider 时，LLM_BASE_URL 才生效
-    # 这允许临时切换到其他端点（如本地代理），同时不破坏 provider/model 格式的路由
+    # base_url 回退：仅当 DEFAULT_PROVIDER 未被环境变量覆盖，
+    # 且使用的是 yaml 配置的默认 provider 时，LLM_BASE_URL 才生效。
+    # 否则会把阿里云的 URL 错误覆盖到 OpenRouter 等 provider 上。
     env_base_url = os.getenv("LLM_BASE_URL")
-    if env_base_url and final_provider == llm_config.default_provider and provider is None:
+    yaml_default_provider = llm_config._config.get("default", {}).get("provider", "aliyun")
+    if (
+        env_base_url
+        and final_provider == yaml_default_provider
+        and provider is None
+        and not os.getenv("DEFAULT_PROVIDER")  # 环境变量切换了 provider 时，不回退
+    ):
         base_url = env_base_url
 
     if not api_key:
