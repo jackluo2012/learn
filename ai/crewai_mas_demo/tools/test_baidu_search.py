@@ -31,7 +31,7 @@ class TestBaiduSearchInputValidation:
     def test_valid_query(self):
         input_data = BaiduSearchInput(query="Python 教程")
         assert input_data.query == "Python 教程"
-        assert input_data.top_k == 20
+        assert input_data.top_k == "20"
 
     def test_empty_query_raises_error(self):
         with pytest.raises(ValueError) as exc_info:

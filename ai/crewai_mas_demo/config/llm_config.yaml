@@ -81,7 +81,7 @@ providers:
 # ============================================================
 models:
   assistant:
-    model: qwen3.5-plus
+    model: qwen3.6-plus
     temperature: 0.7
   lightweight:
     model: qwen3-turbo
@@ -121,6 +121,7 @@ allowed_models:
   - deepseek-r1
   - kimi-k2.5
   - qwen-flash
+  - qwen3.6-plus
   - qwen-flash-2025-07-28
   # OpenRouter 模型
   - openai/gpt-4o

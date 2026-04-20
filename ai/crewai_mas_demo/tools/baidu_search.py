@@ -62,9 +62,9 @@ class BaiduSearchInput(BaseModel):
         None,
         description="根据网页发布时间进行筛选，可选值week(最近7天)、month(最近30天)、semiyear(最近180天)、year(最近365天)，通常根据用户需求的时效性要求来选择，常识性的问题不使用，资讯类的可能比较短。",
     )
-    sites: Optional[List[str]] = Field(
+    sites: Optional[str] = Field(
         None,
-        description="指定搜索的站点列表，最多支持20个站点，默认None，仅在设置的站点中进行内容搜索，示例['www.weather.com.cn', 'news.baidu.com']，通常根据需求指定权威站点，如词条类的通常是百度百科，股票类的通常是东方财富网，开源项目等通常是GitHub等。",
+        description="指定搜索的站点列表，最多支持20个站点，默认None，仅在设置的站点中进行内容搜索，示例'www.weather.com.cn,news.baidu.com'，通常根据需求指定权威站点，如词条类的通常是百度百科，股票类的通常是东方财富网，开源项目等通常是GitHub等。",
     )
 
     @field_validator("query")
@@ -79,10 +79,19 @@ class BaiduSearchInput(BaseModel):
             )
         return v.strip()
 
-    @field_validator("sites")
+    @field_validator("sites", mode="before")
     @classmethod
-    def validate_sites(cls, v: Optional[List[str]]) -> Optional[List[str]]:
-        """验证站点数量"""
+    def validate_sites(cls, v) -> Optional[List[str]]:
+        """验证站点数量，处理字符串输入（如 'site1.com,site2.com' 或 'None'）"""
+        # 处理字符串 "None"
+        if isinstance(v, str):
+            if v.lower() == "none" or v.strip() == "":
+                return None
+            # 将逗号分隔的字符串转换为列表
+            sites_list = [s.strip() for s in v.split(",") if s.strip()]
+            v = sites_list
+
+        # 验证列表长度
         if v and len(v) > 20:
             raise ValueError(
                 f"错误：站点列表数量超出限制。"
@@ -178,6 +187,9 @@ class BaiduSearchTool(BaseTool):
         )
 
         # 构建资源类型过滤器列表
+        # 确保 top_k 是整数类型
+        if not isinstance(top_k, int):
+            top_k = int(top_k) if top_k else 20
         resource_type_filter = [{"type": "web", "top_k": top_k}]
 
         # 构建请求体

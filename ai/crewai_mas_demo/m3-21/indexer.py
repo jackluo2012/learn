@@ -22,6 +22,7 @@ from typing import Any
 import psycopg2
 import psycopg2.extras
 from openai import OpenAI
+from config import llm_config
 # ─────────────────────────────────────────────────────────────────────────────
 # 配置
 # ─────────────────────────────────────────────────────────────────────────────
@@ -37,7 +38,8 @@ EMBED_DIM     = 1024
 # 提取摘要+标签的模型。
 # 课程设计原本建议使用轻量模型（如 qwen3-turbo）以控制成本；
 # 考虑到部分环境未开通 turbo，为保证 demo 可跑通，这里默认使用 qwen3-max。
-EXTRACT_MODEL = "qwen3-max"
+config = llm_config.get_model_config("assistant")
+EXTRACT_MODEL = config['model']
 
 # 通义 embedding API（兼容 OpenAI SDK）
 _embed_client = OpenAI(
