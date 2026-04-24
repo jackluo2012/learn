@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leave Record Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .form-container {
+            max-width: 600px;
+            margin: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        input[type="text"], select, textarea {
+            width: 100%;
+            padding: 12px 20px;
+            margin: 8px 0;
+            display: inline-block;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 14px 20px;
+            margin: 8px 0;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <h1>Employee Leave Record Management</h1>
+    <div class="form-container">
+        <h2>Add/Edit Leave Record</h2>
+        <form id="leaveForm">
+            <label for="employee_id">Employee ID:</label>
+            <input type="text" id="employee_id" name="employee_id" required><br><br>
+            <label for="employee_name">Employee Name:</label>
+            <input type="text" id="employee_name" name="employee_name" required><br><br>
+            <label for="leave_type">Leave Type:</label>
+            <select id="leave_type" name="leave_type" required>
+                <option value="annual">Annual Leave</option>
+                <option value="sick">Sick Leave</option>
+                <option value="personal">Personal Leave</option>
+                <option value="marriage">Marriage Leave</option>
+                <option value="maternity">Maternity Leave</option>
+                <option value="paternity">Paternity Leave</option>
+                <option value="bereavement">Bereavement Leave</option>
+            </select><br><br>
+            <label for="start_date">Start Date:</label>
+            <input type="date" id="start_date" name="start_date" required><br><br>
+            <label for="end_date">End Date:</label>
+            <input type="date" id="end_date" name="end_date" required><br><br>
+            <label for="reason">Reason:</label>
+            <textarea id="reason" name="reason" rows="4" cols="50" required></textarea><br><br>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+    <div class="form-container">
+        <h2>Leave Records</h2>
+        <table id="recordsTable">
+            <thead>
+                <tr>
+                    <th>Employee Name</th>
+                    <th>Leave Type</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Days</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Records will be inserted here by JavaScript -->
+            </tbody>
+        </table>
+    </div>
+    <script>
+        // Mock data
+        const records = [
+            {id: '1', employee_id: 'E001', employee_name: 'John Doe', leave_type: 'annual', start_date: '2023-09-01', end_date: '2023-09-05', days: 5, apply_time: '2023-08-30T10:00:00Z', status: 'approved', approver: 'Jane Smith', reason: 'Vacation'},
+            {id: '2', employee_id: 'E002', employee_name: 'Jane Doe', leave_type: 'sick', start_date: '2023-09-10', end_date: '2023-09-12', days: 3, apply_time: '2023-09-08T14:00:00Z', status: 'pending', approver: '', reason: 'Flu'}
+        ];
+
+        function populateTable(records) {
+            const tbody = document.querySelector('#recordsTable tbody');
+            tbody.innerHTML = '';
+            records.forEach(record => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${record.employee_name}</td>
+                    <td>${record.leave_type}</td>
+                    <td>${record.start_date}</td>
+                    <td>${record.end_date}</td>
+                    <td>${record.days}</td>
+                    <td>${record.status}</td>
+                    <td>
+                        <button onclick="editRecord('${record.id}')">Edit</button>
+                        <button onclick="deleteRecord('${record.id}')">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function addRecord(record) {
+            records.push(record);
+            populateTable([record]);
+        }
+
+        function updateRecord(record) {
+            const index = records.findIndex(r => r.id === record.id);
+            if (index !== -1) {
+                records[index] = record;
+                populateTable([record]);
+            }
+        }
+
+        function deleteRecord(id) {
+            if (confirm("Are you sure you want to delete this record?")) {
+                records = records.filter(record => record.id !== id);
+                populateTable(records);
+            }
+        }
+
+        function editRecord(id) {
+            const record = records.find(record => record.id === id);
+            if (record && record.status === 'pending') {
+                document.getElementById('employee_id').value = record.employee_id;
+                document.getElementById('employee_name').value = record.employee_name;
+                document.getElementById('leave_type').value = record.leave_type;
+                document.getElementById('start_date').value = record.start_date;
+                document.getElementById('end_date').value = record.end_date;
+                document.getElementById('reason').value = record.reason;
+                document.getElementById('leaveForm').onsubmit = function() {
+                    const updatedRecord = {
+                        id: record.id,
+                        employee_id: document.getElementById('employee_id').value,
+                        employee_name: document.getElementById('employee_name').value,
+                        leave_type: document.getElementById('leave_type').value,
+                        start_date: document.getElementById('start_date').value,
+                        end_date: document.getElementById('end_date').value,
+                        days: (new Date(document.getElementById('end_date').value) - new Date(document.getElementById('start_date').value)) / (1000 * 60 * 60 * 24),
+                        apply_time: new Date().toISOString(),
+                        status: 'pending',
+                        approver: '',
+                        reason: document.getElementById('reason').value
+                    };
+                    updateRecord(updatedRecord);
+                    document.getElementById('leaveForm').reset();
+                    document.getElementById('leaveForm').onsubmit = null;
+                };
+            }
+        }
+
+        document.getElementById('leaveForm').onsubmit = function() {
+            const newRecord = {
+                id: Math.random().toString(36).substring(7),
+                employee_id: document.getElementById('employee_id').value,
+                employee_name: document.getElementById('employee_name').value,
+                leave_type: document.getElementById('leave_type').value,
+                start_date: document.getElementById('start_date').value,
+                end_date: document.getElementById('end_date').value,
+                days: (new Date(document.getElementById('end_date').value) - new Date(document.getElementById('start_date').value)) / (1000 * 60 * 60 * 24),
+                apply_time: new Date().toISOString(),
+                status: 'pending',
+                approver: '',
+                reason: document.getElementById('reason').value
+            };
+            addRecord(newRecord);
+            document.getElementById('leaveForm').reset();
+        };
+
+        populateTable(records);
+    </script>
+</body>
+</html>

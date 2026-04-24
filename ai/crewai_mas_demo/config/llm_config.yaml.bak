@@ -59,7 +59,7 @@ providers:
     - qwen/qwen3-235b-a22b
 models:
   assistant:
-    model: qwen-max-latest
+    model: qwen-turbo-1101
     temperature: 0.7
   lightweight:
     model: qwen-turbo-1101

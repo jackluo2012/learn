@@ -53,6 +53,19 @@ def load_quota_json(path: str) -> dict:
         return merged
 
     obj = json.loads(raw)
+
+    # 处理 DashScope API 返回的格式: {"data": {"DataV2": {...}}}
+    if "data" in obj and isinstance(obj["data"], dict):
+        data = obj["data"]
+        # 如果是 {"DataV2": {"data": {"data": {"freeTierQuotas": [...]}}}}
+        if "DataV2" in data and isinstance(data["DataV2"], dict):
+            datav2 = data["DataV2"]
+            if "data" in datav2 and isinstance(datav2["data"], dict):
+                inner = datav2["data"]
+                if "data" in inner and isinstance(inner["data"], dict):
+                    return inner["data"]
+        return data
+
     return obj.get("data", obj)
 
 
@@ -76,6 +89,7 @@ def _merge_obj(obj: dict, merged: dict):
 
 def _get_remaining(obj: dict) -> float | None:
     """从单个 model 对象提取 remaining 值."""
+    # 优先从 quota_usage 获取剩余配额
     quota = obj.get("quota_usage") or obj.get("stats", {})
     if isinstance(quota, dict):
         if "remaining" in quota:
@@ -86,6 +100,11 @@ def _get_remaining(obj: dict) -> float | None:
             limit = float(quota.get("limit", 0) or 0)
             if limit > 0:
                 return limit - used
+
+    # 支持 freeTierQuotas 格式：quotaInitTotal 是总配额
+    if "quotaInitTotal" in obj:
+        return float(obj["quotaInitTotal"])
+
     return None
 
 
@@ -93,6 +112,19 @@ def extract_remaining(quota_data: dict, category: str | None = None) -> dict[str
     """提取模型剩余 token，{model_name: remaining}."""
     result: dict[str, float] = {}
 
+    # 处理 freeTierQuotas 格式 (DashScope API 返回的格式)
+    if "freeTierQuotas" in quota_data:
+        models_list = quota_data["freeTierQuotas"]
+        for m in models_list:
+            if not isinstance(m, dict):
+                continue
+            name = m.get("model", "")
+            rem = _get_remaining(m)
+            if name and rem is not None and rem > 0:
+                result[name] = rem
+        return result
+
+    # 处理标准格式
     if all(k in quota_data for k in ["model", "quota_usage"]):
         name = quota_data["model"]
         rem = _get_remaining(quota_data)
@@ -115,7 +147,7 @@ def extract_remaining(quota_data: dict, category: str | None = None) -> dict[str
                 continue
             name = m.get("model", "")
             rem = _get_remaining(m)
-            if name and rem is not None:
+            if name and rem is not None and rem > 0:
                 if name not in result or rem > result[name]:
                     result[name] = rem
 
@@ -153,26 +185,90 @@ def set_model(cfg: dict, role_path: str, model: str):
 
 
 # ══════════════════════════════════════════════
-# 替换逻辑
+# 模型类型过滤
 # ══════════════════════════════════════════════
 
-def pick_best(model_remaining: dict[str, float], current: str) -> str | None:
-    """返回剩余 token 最多的模型名（若已是最好则返回 None）."""
-    if not model_remaining:
+def filter_models_by_type(model_remaining: dict[str, float], role_type: str) -> dict[str, float]:
+    """根据角色类型过滤合适的模型.
+
+    Args:
+        model_remaining: {模型名: 剩余配额}
+        role_type: 角色类型 (text, coder, image, long, summary, assistant)
+
+    Returns:
+        过滤后的 {模型名: 剩余配额}
+    """
+    if role_type == "coder":
+        # 编程模型：强制使用 coder 模型
+        filtered = {k: v for k, v in model_remaining.items()
+                    if "coder" in k.lower()}
+        if filtered:
+            return filtered
+        print(f"  [WARNING] 未找到coder模型，将使用通用模型")
+    elif role_type == "image" or role_type == "vision":
+        # 视觉模型：强制使用 vl (vision-language) 或 qvq 模型
+        filtered = {k: v for k, v in model_remaining.items()
+                    if "vl" in k.lower() or "vision" in k.lower() or k.startswith("qvq")}
+        if filtered:
+            return filtered
+        print(f"  [WARNING] 未找到视觉模型，将使用通用模型")
+    elif role_type == "long" or role_type == "long_context":
+        # 长上下文模型：强制使用 long 模型
+        filtered = {k: v for k, v in model_remaining.items()
+                    if "long" in k.lower()}
+        if filtered:
+            return filtered
+        print(f"  [WARNING] 未找到长上下文模型，将使用通用模型")
+    elif role_type == "summary":
+        # 摘要模型：优先 turbo（快速），其次是 flash
+        filtered = {k: v for k, v in model_remaining.items()
+                    if "turbo" in k.lower() or "flash" in k.lower()}
+        if filtered:
+            return filtered
+
+    # 默认返回所有模型
+    return model_remaining
+
+
+def pick_best(model_remaining: dict[str, float], current: str, role_type: str = "text") -> str | None:
+    """返回剩余 token 最多的模型名（若已是最好则返回 None）.
+
+    Args:
+        model_remaining: {模型名: 剩余配额}
+        current: 当前使用的模型名
+        role_type: 角色类型，用于过滤合适的模型
+
+    Returns:
+        最佳模型名，如果当前已经是最佳则返回 None
+    """
+    # 根据角色类型过滤合适的模型
+    filtered = filter_models_by_type(model_remaining, role_type)
+
+    if not filtered:
         return None
-    best = max(model_remaining, key=model_remaining.get)
+
+    best = max(filtered, key=filtered.get)
     return None if best == current else best
 
 
 def update_allowed_models(cfg: dict, quota_data: dict):
-    """allowed_models：每个系列只保留剩余最多的版本."""
+    """allowed_models：
+    1. 只保留在quota.json中真实存在且配额>0的模型
+    2. 每个系列只保留配额最多的版本
+    3. 自动添加quota.json中高配额的模型
+    """
     allowed = cfg.get("allowed_models", [])
     if not allowed:
         return
 
+    # 提取所有有配额的模型
     all_rem = extract_remaining(quota_data)
 
-    PREFIXES = ["qwen3.5", "qwen3", "qwen-coder", "qwen-vl", "qvq", "qwen", "deepseek", "kimi"]
+    if not all_rem:
+        print("[WARNING] 未找到任何有配额的模型，保留原有allowed_models")
+        return
+
+    PREFIXES = ["qwen3.5", "qwen3.6", "qwen3", "qwen-coder", "qwen-vl", "qvq", "qwen", "deepseek", "kimi", "glm", "llama"]
 
     def get_series(model: str) -> str:
         for p in PREFIXES:
@@ -180,21 +276,35 @@ def update_allowed_models(cfg: dict, quota_data: dict):
                 return p
         return model.split("-")[0]
 
-    series_best: dict[str, float] = {}
+    # 按系列分组，找出每个系列配额最多的模型
+    series_best: dict[str, tuple[str, float]] = {}  # {series: (best_model, quota)}
     for m, rem in all_rem.items():
         s = get_series(m)
-        series_best[s] = max(series_best.get(s, 0), rem)
+        if s not in series_best or rem > series_best[s][1]:
+            series_best[s] = (m, rem)
 
+    # 新的allowed_models列表
     new_allowed = []
+
+    # 1. 保留原有模型中存在的且有配额的
     for m in allowed:
-        s = get_series(m)
-        rem = all_rem.get(m, 0)
-        best = series_best.get(s, 0)
-        # 保留：剩余 >= 系列最佳的 50%，或者是最佳本身
-        if rem >= best * 0.5 or rem == best:
+        if m in all_rem and all_rem[m] > 0:
             new_allowed.append(m)
 
+    # 2. 添加每个系列中配额最多的模型（如果还未添加）
+    for series, (best_model, quota) in series_best.items():
+        if quota > 0 and best_model not in new_allowed:
+            new_allowed.append(best_model)
+
+    # 3. 排序：按配额降序
+    new_allowed.sort(key=lambda m: all_rem.get(m, 0), reverse=True)
+
     cfg["allowed_models"] = new_allowed
+
+    # 打印统计信息
+    print(f"[INFO] allowed_models 更新: {len(allowed)} -> {len(new_allowed)}")
+    print(f"[INFO] 新增模型: {[m for m in new_allowed if m not in allowed]}")
+    print(f"[INFO] 移除模型: {[m for m in allowed if m not in new_allowed]}")
 
 
 # ══════════════════════════════════════════════
@@ -222,34 +332,37 @@ def main():
 
     # 分析替换方案
     changes = []
-    for role_path, (cat, _) in ROLE_CATEGORY_MAP.items():
+    for role_path, (role_type, _) in ROLE_CATEGORY_MAP.items():
         current = get_model(cfg, role_path)
-        if cat:
-            mrem = extract_remaining({cat: quota_data.get(cat, {})})
-        else:
-            mrem = extract_remaining(quota_data)
 
-        best = pick_best(mrem, current)
+        # 提取所有模型配额
+        mrem = extract_remaining(quota_data)
+
+        # 根据角色类型选择最佳模型
+        rt = role_type or "text"
+        best = pick_best(mrem, current, rt)
         if best:
             changes.append({
                 "role": ROLE_DISPLAY.get(role_path, role_path),
+                "role_type": rt,
                 "current": current,
-                "current_rem": mrem.get(current),
+                "current_rem": mrem.get(current, 0),
                 "best": best,
-                "best_rem": mrem.get(best),
+                "best_rem": mrem.get(best, 0),
             })
 
     # 打印
-    print("\n" + "=" * 75)
-    print(f"{'Role':<40} {'Current':<20} -> {'Best':<20} {'Remain'}")
-    print("=" * 75)
+    print("\n" + "=" * 85)
+    print(f"{'Role':<35} {'Type':<12} {'Current':<20} -> {'Best':<20} {'Tokens':>12}")
+    print("=" * 85)
     if not changes:
-        print(f"{'  (no replacement needed)':<40}")
+        print(f"{'  (no replacement needed)':<35}")
     else:
         for c in sorted(changes, key=lambda x: x["best_rem"] or 0, reverse=True):
-            cur = f"{c['current_rem']:.0f}" if c["current_rem"] else "?"
-            print(f"{c['role']:<40} {c['current']:<20} -> {c['best']:<20} {c['best_rem']:>10.0f}  (now: {cur})")
-    print("=" * 75)
+            cur_rem = f"{c['current_rem']:,.0f}" if c["current_rem"] else "0"
+            best_rem = f"{c['best_rem']:,.0f}" if c["best_rem"] else "0"
+            print(f"{c['role']:<35} {c['role_type']:<12} {c['current']:<20} -> {c['best']:<20} {best_rem:>12}  (now: {cur_rem})")
+    print("=" * 85)
 
     if args.dry_run:
         print("[dry-run] 未写入文件.\n"
@@ -263,13 +376,10 @@ def main():
         return
 
     # 写入
-    for role_path, (cat, _) in ROLE_CATEGORY_MAP.items():
+    for role_path, (role_type, _) in ROLE_CATEGORY_MAP.items():
         current = get_model(cfg, role_path)
-        if cat:
-            mrem = extract_remaining({cat: quota_data.get(cat, {})})
-        else:
-            mrem = extract_remaining(quota_data)
-        best = pick_best(mrem, current)
+        mrem = extract_remaining(quota_data)
+        best = pick_best(mrem, current, role_type or "text")
         if best:
             set_model(cfg, role_path, best)
 
