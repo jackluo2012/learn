@@ -48,15 +48,15 @@ REQUIREMENTS_FILE = WORKSPACE_DIR / "requirements.md"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # LLM 工厂
-# - 主 Orchestrator 与所有子 Agent：qwen3.6-max-preview
+# - 主 Orchestrator 与所有子 Agent：qwen-max-latest
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _llm(model: str = "qwen3.6-max-preview") -> AliyunLLM:
+def _llm(model: str = "qwen-max-latest") -> AliyunLLM:
     return create_llm_for_role("assistant")    # 助手
 
 
 def _llm_for_sub_agent(role: str) -> AliyunLLM:
-    """所有子 Agent 统一使用 qwen3.6-max-preview。"""
+    """所有子 Agent 统一使用 qwen-max-latest。"""
     return create_llm_for_role("lightweight")    # 轻量级的
 
 
@@ -497,7 +497,7 @@ def build_orchestrator() -> tuple[Agent, Task]:
         # 配置Agent可用的工具
         tools=[SpawnSubAgentTool(), SpawnParallelTool(), FileReadTool()],
         # 配置Agent使用的语言模型
-        llm=_llm("qwen3.6-max-preview"),
+        llm=_llm("qwen-max-latest"),
         verbose=True,
     )
 

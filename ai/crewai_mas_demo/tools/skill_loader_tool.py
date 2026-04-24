@@ -82,23 +82,20 @@ def build_skill_crew(
     skill_name: str,
     skill_instructions: str,
     mount_desc: str = DEFAULT_SANDBOX_MOUNT_DESC,  # 💡 mount_desc 参数：默认保持 m2l16 行为，m3l20 传入新挂载描述
+    mcp_url: str = SANDBOX_MCP_URL,  # 💡 mcp_url 参数：m4l25 Manager=8023, Dev=8024
 ) -> Crew:
     """
     Sub-Crew 工厂：为指定 Skill 构建一个在 AIO-Sandbox 中执行的 Crew。
     mount_desc 描述沙盒挂载路径，默认为 m2l16 的 data:ro + output:rw。
     传入自定义 mount_desc 可适配不同课程的沙盒配置，不影响其他参数。
+    mcp_url 指定沙盒 MCP 端点，m4l25 Manager/Dev 各用独立端口。
     """
     sandbox_mcp = MCPServerHTTP(
-        url=SANDBOX_MCP_URL,
+        url=mcp_url,
         #tool_filter=SANDBOX_TOOL_FILTER, # 暂时不使用工具过滤，因为目前工具都用得上
     )
 
-    # 从配置文件读取模型配置
-    from config import llm_config
-    skill_llm = AliyunLLM(
-        region=llm_config.default_region,
-        temperature=llm_config.get_model_config("lightweight").get("temperature", 0.3)
-    )
+    skill_llm = AliyunLLM(model="qwen-max-latest", region="cn", temperature=0.3)
 
     skill_agent = Agent(
         role=f"{skill_name.upper()} Skill 执行专家",
@@ -184,26 +181,74 @@ class SkillLoaderTool(BaseTool):
     # m3l20：SkillLoaderTool(sandbox_mount_desc=M3L20_SANDBOX_MOUNT_DESC)  →  workspace:rw
     sandbox_mount_desc: str = DEFAULT_SANDBOX_MOUNT_DESC
 
+    # 💡 沙盒 MCP URL：默认 8022，各课程可传入自定义端口（m4l25 Manager=8023, Dev=8024）
+    sandbox_mcp_url: str = SANDBOX_MCP_URL
+
+    # 💡 v3：workspace-local skills 目录（空字符串 = 使用全局 SKILLS_DIR，保持向后兼容）
+    # m4l25 Manager：workspace/manager/skills/
+    # m4l25 Dev：workspace/dev/skills/
+    skills_dir: str = ""
+
     # Pydantic 会把普通 dict 属性当作模型字段，用 PrivateAttr 绕开
     _skill_registry: dict[str, Any] = PrivateAttr(default_factory=dict)
     _instruction_cache: dict[str, Any] = PrivateAttr(default_factory=dict)
 
-    def __init__(self, sandbox_mount_desc: str = DEFAULT_SANDBOX_MOUNT_DESC):
-        super().__init__(sandbox_mount_desc=sandbox_mount_desc)
+    def __init__(
+        self,
+        sandbox_mount_desc: str = DEFAULT_SANDBOX_MOUNT_DESC,
+        sandbox_mcp_url: str = SANDBOX_MCP_URL,
+        skills_dir: str = "",
+    ):
+        super().__init__(
+            sandbox_mount_desc=sandbox_mount_desc,
+            sandbox_mcp_url=sandbox_mcp_url,
+            skills_dir=skills_dir,
+        )
         # 实例级属性，避免类级共享
         self._skill_registry = {}
         self._instruction_cache = {}
         self._build_description()
 
+    def _effective_skills_dir(self) -> Path:
+        """返回 workspace-local skills 目录（若已配置），否则返回全局 SKILLS_DIR。"""
+        if self.skills_dir:
+            return Path(self.skills_dir)
+        return SKILLS_DIR
+
+    def _resolve_skill_path(self, skill_name: str) -> Path | None:
+        """
+        💡 核心点：双目录查找策略
+        1. 优先在 workspace-local skills 目录查找
+        2. 找不到时回退到全局 SKILLS_DIR
+        这样 workspace 只需放角色独有的 Skill，通用 Skill（memory-save、write-output 等）
+        不必在每个 workspace 中重复维护。
+        """
+        import logging
+        workspace_dir = self._effective_skills_dir()
+        skill_path = workspace_dir / skill_name
+        if skill_path.is_dir() and (skill_path / "SKILL.md").exists():
+            return skill_path
+        # 用 .resolve() 比较，避免符号链接 / 相对路径导致误判
+        if workspace_dir.resolve() != SKILLS_DIR.resolve():
+            global_path = SKILLS_DIR / skill_name
+            if global_path.is_dir() and (global_path / "SKILL.md").exists():
+                logging.debug(
+                    "Skill '%s' not found in workspace '%s', falling back to global SKILLS_DIR",
+                    skill_name, workspace_dir,
+                )
+                return global_path
+        return None
+
     # ── 阶段 1：元数据解析，构建 XML description ────────────────────────────
 
-    def _build_description(self):
+    def _build_description(self) -> None:
         """
         💡 核心点：渐进式披露第一阶段
         只读 frontmatter，构建轻量 XML 注入 description。
         主 Agent 看到工具 → 知道"什么场景用什么 Skill"，但不加载完整指令。
         """
-        manifest_path = SKILLS_DIR / "load_skills.yaml"
+        effective_dir = self._effective_skills_dir()
+        manifest_path = effective_dir / "load_skills.yaml"
         if not manifest_path.exists():
             # 找不到配置文件时，保证工具仍可被安全加载
             self.description = (
@@ -231,10 +276,9 @@ class SkillLoaderTool(BaseTool):
                 continue
             name = skill_conf["name"]
             skill_type = skill_conf.get("type", "task")
-            skill_path = SKILLS_DIR / name
-            if not skill_path.exists():
-                continue
-            if not (skill_path / "SKILL.md").exists():
+            # 💡 双目录查找：workspace 优先，全局回退
+            skill_path = self._resolve_skill_path(name)
+            if skill_path is None:
                 continue
 
             skill_md = (skill_path / "SKILL.md").read_text()
@@ -256,8 +300,10 @@ class SkillLoaderTool(BaseTool):
         # 💡 核心点：约束已在 SkillLoaderInput.task_context 的 Field description 中定义，
         #    这里只展示 Skill 能力清单，保持 description 简洁
         self.description = (
-            "当需要完成的任务涉及以下XML 列表中的技能时，调用此工具。\n"
-            "根据下方 XML 列表选择正确的 skill_name，并在 task_context 中提供完整任务信息。\n\n"
+            "⚠️ 重要：这是你唯一的工具。所有能力（包括 memory-save、sop 等）都必须通过此工具调用，"
+            "不得直接调用 skill 名称作为工具。\n\n"
+            "调用方式：skill_loader(skill_name='<名称>', task_context='<任务描述>')\n"
+            "skill_name 必须严格来自下方 XML 列表中的 <name> 值。\n\n"
             + "\n".join(xml_parts)
         )
 
@@ -295,15 +341,22 @@ class SkillLoaderTool(BaseTool):
             f"IMPORTANT:【强制约束】所有脚本和文件操作必须在 AIO-Sandbox 中执行，禁止直接操作本地文件系统。\n"
             f"此 Skill 资源已挂载至沙盒绝对路径：{_base}/\n\n"
             f"可用沙盒工具及正确用法：\n"
-            f"1. sandbox_execute_bash：执行 Shell 命令。参数：cmd（必填，字符串）、cwd（可选，工作目录绝对路径）、timeout（可选，秒）。\n"
-            f"   - 运行脚本示例：如需运行脚本scripts/xxx.py，则调用sandbox_execute_bash且参数为cmd=\"python {_base}/scripts/xxx.py 参数\"，如需可设 cwd=\"{_base}\"。\n"
-            f"   - 安装依赖：cmd=\"pip install 包名\"，再重试任务。\n"
-            f"2. sandbox_file_operations：统一文件操作。参数：action（必填，'read'|'write'|'list'|'find'|'replace'|'search'）、path（必填，文件或目录绝对路径）、其余见工具说明。\n"
-            f"   - 读取单个文件：action=\"read\", path=\"文件绝对路径\"（示例：如需要获取reference/xxx.md，则调用工具sandbox_file_operations且参数为action=\"read\", path=\"{_base}/reference/xxx.md\"）。\n"
+            f"1. sandbox_file_operations：统一文件操作（⚡ 写文件首选工具，不经过 shell 无截断风险）。\n"
+            f"   参数：action（必填，'read'|'write'|'list'|'find'|'replace'|'search'）、path（必填，文件或目录绝对路径）、其余见工具说明。\n"
+            f"   - 📝 写入文件（优先！）：action=\"write\", path=\"文件绝对路径\", content=\"文件完整内容\"。内容直接通过 MCP JSON 传输，无 shell 转义，不会截断。\n"
+            f"   - 读取单个文件：action=\"read\", path=\"文件绝对路径\"（示例：path=\"{_base}/reference/xxx.md\"）。\n"
             f"   - 列出目录：action=\"list\", path=\"目录绝对路径\"（如 path=\"{_base}/reference\"），可选 recursive=true。\n"
             f"   - 按模式查找文件：action=\"find\", path=\"目录\", pattern=\"*.md\"。\n"
-            f"3. sandbox_str_replace_editor：编辑文件。参数：command（'view'|'create'|'str_replace'|'insert'）、path（文件路径）等。\n"
-            f"4. sandbox_execute_code：执行代码片段。参数：code（必填）、language（'python'|'javascript'）、timeout（可选）。\n"
+            f"2. sandbox_execute_bash：执行 Shell 命令。参数：cmd（必填，字符串）、cwd（可选，工作目录绝对路径）、timeout（可选，秒）。\n"
+            f"   ⚠️ 警告：通过 bash 命令行传递大段文件内容（如 --content \"...\"）极易因 shell 特殊字符（引号、反引号、$变量等）导致内容静默截断！\n"
+            f"   ✅ bash 适用场景：运行脚本、安装依赖、执行系统命令——不得用于传递大段文本内容。\n"
+            f"   - 运行脚本示例：cmd=\"python {_base}/scripts/xxx.py 参数\"，如需可设 cwd=\"{_base}\"。\n"
+            f"   - 安装依赖：cmd=\"pip install 包名\"，再重试任务。\n"
+            f"3. sandbox_execute_code：执行代码片段（备用写文件方案）。参数：code（必填）、language（'python'|'javascript'）、timeout（可选）。\n"
+            f"   - 当需要写入大文件且 sandbox_file_operations write 不可用时，用 Python 代码直接写文件，避免 shell 转义问题。\n"
+            f"4. sandbox_str_replace_editor：编辑文件。参数：command（'view'|'create'|'str_replace'|'insert'）、path（文件路径）等。\n"
+            f"\n"
+            f"【写文件优先级】sandbox_file_operations(action='write') > sandbox_execute_code(python write) > ❌sandbox_execute_bash(--content)\n"
             f"</sandbox_execution_directive>"
         )
 
@@ -322,19 +375,44 @@ class SkillLoaderTool(BaseTool):
             # 参考型：直接返回指令文本，不启动 Sub-Crew
             return f"<skill_instructions>\n{instructions}\n</skill_instructions>"
 
+        # 任务型：task_context 为空时，返回指令帮助 Agent 理解 Skill 后再调用
+        if not task_context.strip():
+            return (
+                f"<skill_instructions>\n{instructions}\n</skill_instructions>\n\n"
+                "⚠️ 这是任务型 Skill（type: task），需要 task_context 才能执行。\n"
+                "请在下次调用时传入完整的 task_context，包含：\n"
+                "1. 要执行的具体操作（如：发送邮件/读取邮箱）\n"
+                "2. 预期输出格式（JSON schema，必须包含 errcode 和 errmsg 字段）\n"
+                "3. 所有必要的参数值（收件人、发件人、消息内容等）"
+            )
+
         # 任务型：启动独立 Sub-Crew，在沙盒中执行
         # 💡 核心点：每次 build_skill_crew() 返回新实例，防止状态污染
         crew = build_skill_crew(
             skill_name=skill_name,
             skill_instructions=instructions,
             mount_desc=self.sandbox_mount_desc,  # 💡 透传挂载描述，m3l20 使用自定义挂载
+            mcp_url=self.sandbox_mcp_url,        # 💡 透传 MCP URL，m4l25 各角色使用独立端口
         )
-        result = await crew.akickoff(
-            inputs={
-                "task_context": task_context,
-                "skill_name": skill_name,
-            }
-        )
+
+        # 💡 防止 CrewAI 模板引擎对 SKILL.md 中的 {xxx} 占位符报错
+        # （如 mailbox-ops SKILL.md 中的 {role}.json）
+        # 策略：预扫描所有 agent/task 字段，把不在 inputs 中的变量
+        #       设为自引用（{role} → {role}），保持文本不变
+        base_inputs: dict[str, str] = {
+            "task_context": task_context,
+            "skill_name": skill_name,
+        }
+        all_text = ""
+        for _a in crew.agents:
+            all_text += (_a.role or "") + " " + (_a.goal or "") + " " + (_a.backstory or "") + " "
+        for _t in crew.tasks:
+            all_text += (_t.description or "") + " " + (_t.expected_output or "") + " "
+        for var in re.findall(r"\{([A-Za-z_][A-Za-z0-9_\-]*)\}", all_text):
+            if var not in base_inputs:
+                base_inputs[var] = "{" + var + "}"
+
+        result = await crew.akickoff(inputs=base_inputs)
         return str(result)
 
     # ── 异步路径（FastAPI / akickoff 调用链）────────────────────────────────

@@ -1,0 +1,32 @@
+# m4l25 专用沙盒配置
+# 第25课有 Manager / Dev 两个独立 workspace，各自独立挂载。
+# v3 架构：skills 从全局 ../skills 移入各角色 workspace 内部。
+#
+# 使用方式：
+#   cd crewai_mas_demo/m4l25
+#   docker compose -f sandbox-docker-compose.yaml --profile manager up -d   # Manager 测试
+#   docker compose -f sandbox-docker-compose.yaml --profile dev up -d       # Dev 测试
+
+version: "3.8"
+services:
+  aio-sandbox-manager:
+    image: ghcr.io/agent-infra/sandbox:latest
+    profiles: [manager]
+    ports:
+      - "8023:8080"   # Manager 沙盒：http://localhost:8023/mcp
+    volumes:
+      - ./workspace/manager:/workspace:rw              # Manager workspace 可读写
+      - ../skills:/mnt/skills:ro                       # 全局 skills（memory-save 等任务型脚本）
+    security_opt:
+      - seccomp:unconfined
+
+  aio-sandbox-dev:
+    image: ghcr.io/agent-infra/sandbox:latest
+    profiles: [dev]
+    ports:
+      - "8024:8080"   # Dev 沙盒：http://localhost:8024/mcp
+    volumes:
+      - ./workspace/dev:/workspace:rw                  # Dev workspace 可读写
+      - ../skills:/mnt/skills:ro                       # 全局 skills（memory-save 等任务型脚本）
+    security_opt:
+      - seccomp:unconfined
