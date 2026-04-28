@@ -1,0 +1,34 @@
+# m4l26 专用沙盒配置
+# 第26课有 Manager / PM 两个独立 workspace，各自挂载个人区 + 共享区。
+# 核心点：共享区 /mnt/shared 包含邮箱（mailboxes/）、需求（needs/）、设计（design/）
+#
+# 使用方式：
+#   cd crewai_mas_demo/m4l26
+#   docker compose -f sandbox-docker-compose.yaml --profile manager up -d   # Manager 测试
+#   docker compose -f sandbox-docker-compose.yaml --profile pm up -d        # PM 测试
+
+version: "3.8"
+services:
+  aio-sandbox-manager:
+    image: ghcr.io/agent-infra/sandbox:latest
+    profiles: [manager]
+    ports:
+      - "8025:8080"   # Manager 沙盒：http://localhost:8025/mcp
+    volumes:
+      - ./workspace/manager:/workspace:rw     # Manager 个人区（可读写：session、review_result）
+      - ./workspace/shared:/mnt/shared:rw     # 共享工作区（Manager 可读 needs/ + 写 mailboxes/）
+      - ../skills:/mnt/skills:ro              # 共享 skills 只读
+    security_opt:
+      - seccomp:unconfined
+
+  aio-sandbox-pm:
+    image: ghcr.io/agent-infra/sandbox:latest
+    profiles: [pm]
+    ports:
+      - "8026:8080"   # PM 沙盒：http://localhost:8026/mcp
+    volumes:
+      - ./workspace/pm:/workspace:rw          # PM 个人区（可读写：session、草稿）
+      - ./workspace/shared:/mnt/shared:rw     # 共享工作区（PM 可读 needs/ + 写 design/）
+      - ../skills:/mnt/skills:ro              # 共享 skills 只读
+    security_opt:
+      - seccomp:unconfined

@@ -26,7 +26,7 @@ from openai import OpenAI
 
 DB_DSN = os.getenv(
     "MEMORY_DB_DSN",
-    "postgresql://xiaopaw:xiaopaw123@localhost:5432/xiaopaw_memory",
+    "postgresql://JackClaw:JackClaw123@localhost:5432/JackClaw_memory",
 )
 QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
 EMBED_MODEL  = "text-embedding-v3"
@@ -177,7 +177,7 @@ def search(
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="XiaoPaw 记忆混合检索")
+    parser = argparse.ArgumentParser(description="JackClaw 记忆混合检索")
     parser.add_argument("--query",       required=True,  help="搜索意图（自然语言）")
     parser.add_argument("--tags",        default=None,   help="标签过滤，逗号分隔（如 工作,文件处理）")
     parser.add_argument("--days",        type=int, default=None, help="时间范围，最近N天")

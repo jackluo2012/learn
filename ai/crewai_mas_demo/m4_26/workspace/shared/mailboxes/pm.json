@@ -1,0 +1,13 @@
+[
+  {
+    "id": "msg-b0c91688",
+    "from": "manager",
+    "to": "pm",
+    "type": "task_assign",
+    "subject": "宠物健康记录功能设计任务",
+    "content": "请阅读 /mnt/shared/needs/jackclaw_requirements.md 并产出产品文档至 /mnt/shared/design/jackclaw_product_spec.md",
+    "timestamp": "2026-04-28T03:21:31.253764+00:00",
+    "status": "in_progress",
+    "processing_since": "2026-04-28T03:29:11.858114+00:00"
+  }
+]

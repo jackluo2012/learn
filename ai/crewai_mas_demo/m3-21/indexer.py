@@ -87,7 +87,7 @@ def parse_turns(jsonl_path: Path) -> list[dict[str, Any]]:
                     "routing_key":     routing_key,
                     "user_message":    user_msg.get("content", ""),
                     "assistant_reply": asst_msg.get("content", ""),
-                    # 💡 ts 统一转为毫秒整数；兼容 ISO 字符串（m3l20 写入格式）和整数（XiaoPaw 原生格式）
+                    # 💡 ts 统一转为毫秒整数；兼容 ISO 字符串（m3l20 写入格式）和整数（JackClaw 原生格式）
                     "turn_ts":         int(user_msg.get("ts", 0)) if str(user_msg.get("ts", "0")).isdigit() else 0,
                 })
                 i += 2
@@ -253,7 +253,7 @@ def index_session(jsonl_path: Path) -> int:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 异步包装（供 XiaoPawCrew 每轮对话后后台触发）
+# 异步包装（供 JackClawCrew 每轮对话后后台触发）
 # ─────────────────────────────────────────────────────────────────────────────
 async def async_index_turn(
     session_id:      str,

@@ -1,0 +1,13 @@
+[
+  {
+    "id": "msg-e8f23731",
+    "from": "pm",
+    "to": "manager",
+    "type": "task_done",
+    "subject": "产品文档已完成",
+    "content": "产品文档已写入 /mnt/shared/design/jackclaw_product_spec.md，请验收",
+    "timestamp": "2026-04-28T03:30:33.105886+00:00",
+    "status": "unread",
+    "processing_since": null
+  }
+]
