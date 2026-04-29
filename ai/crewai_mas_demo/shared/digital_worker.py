@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 from uuid import uuid4
 
-from crewai import LLM, Agent, Crew, Task
+from crewai import Agent, Crew, Task
 from crewai.hooks import LLMCallHookContext, before_llm_call
 from crewai.project import CrewBase, agent, crew, llm, task
 
@@ -32,7 +32,7 @@ for _p in [str(_SHARED_DIR), str(_PROJECT_ROOT)]:
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from llm import aliyun_llm  # noqa: E402
+from llm.aliyun_llm import AliyunLLM  # noqa: E402
 from tools.skill_loader_tool import SkillLoaderTool  # noqa: E402
 
 from m3_20.m3_20_file_memory import (  # noqa: E402
@@ -152,11 +152,16 @@ class DigitalWorkerCrew:
         # 💡 v3 核心：workspace-local skills 目录优先加载
         # Agent 的能力完全由 workspace 决定，换 workspace 即换能力
         workspace_skills = self.workspace_dir / "skills"
+        # 直接用 AliyunLLM，完全去掉 openai provider 依赖
+        llm = AliyunLLM(
+            model=self.model if self.model else None,
+            temperature=self.temperature,
+        )
         return Agent(
             role=UNIVERSAL_ROLE,
             goal=UNIVERSAL_GOAL,
             backstory=backstory,
-            llm= create_llm_for_role(role=self.llmrole),
+            llm=llm,
             tools=[
                 SkillLoaderTool(
                     sandbox_mount_desc=self._sandbox_mount_desc,

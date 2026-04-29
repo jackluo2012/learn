@@ -1,0 +1,21 @@
+# PM workspace 专属 Skills 清单（第26课·v3）
+# 数字员工的能力完全由 Workspace 决定（v3 架构原则）
+#
+# 加载方式：SkillLoaderTool(skills_dir=workspace/pm/skills)
+
+skills:
+  - name: mailbox
+    type: task        # 任务型：在沙盒中运行 mailbox_cli.py
+    enabled: true
+
+  - name: product_design
+    type: reference   # 参考型：直接注入上下文，说明产品文档写作规范
+    enabled: true
+
+  - name: memory-save
+    type: task        # 任务型：保存文件到 workspace / shared
+    enabled: true
+
+  - name: write-output
+    type: task        # 任务型：写入工作产出文件（产品规格文档、验收报告、技术设计等）
+    enabled: true

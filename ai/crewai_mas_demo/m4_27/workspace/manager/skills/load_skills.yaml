@@ -1,0 +1,35 @@
+# Manager workspace 专属 Skills 清单（第27课·Human as 甲方）
+# 数字员工的能力完全由 Workspace 决定（v3 架构原则）
+
+skills:
+  - name: init_project
+    type: task        # 任务型：在沙盒中运行 init_workspace.py（含 human.json）
+    enabled: true
+
+  - name: mailbox
+    type: task        # 任务型：在沙盒中运行 mailbox_cli.py
+    enabled: true
+
+  - name: requirements_discovery
+    type: reference   # 参考型：需求澄清框架（四维度），直接注入上下文
+    enabled: true
+
+  - name: sop_creator
+    type: reference   # 参考型：SOP 共创框架，直接注入上下文
+    enabled: true
+
+  - name: sop_selector
+    type: task        # 任务型：在沙盒中读 SOP 库，写 active_sop.md
+    enabled: true
+
+  - name: notify_human
+    type: reference   # 参考型：通知 Human 的规范（何时通知/不通知）
+    enabled: true
+
+  - name: memory-save
+    type: task        # 任务型：保存文件到 workspace
+    enabled: true
+
+  - name: write-output
+    type: task        # 任务型：写入工作产出文件（产品规格文档、验收报告、技术设计等）
+    enabled: true

@@ -94,8 +94,8 @@ def build_skill_crew(
         url=mcp_url,
         #tool_filter=SANDBOX_TOOL_FILTER, # 暂时不使用工具过滤，因为目前工具都用得上
     )
-
-    skill_llm = AliyunLLM(model="qwen-max-latest", region="cn", temperature=0.3)
+    from llm import create_llm_for_role
+    skill_llm = create_llm_for_role("assistant") #AliyunLLM(model="qwen-max-latest", region="cn", temperature=0.3)
 
     skill_agent = Agent(
         role=f"{skill_name.upper()} Skill 执行专家",
