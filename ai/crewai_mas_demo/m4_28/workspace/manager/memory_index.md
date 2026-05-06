@@ -1,0 +1,1 @@
+2025-01-28 | 项目启动 | /mnt/shared/needs/requirements.md | 宠物健康记录App项目已启动，需求文档第1轮已写入，needs_confirm消息已发送给Human(msg-d15a5227)，等待Human确认需求。

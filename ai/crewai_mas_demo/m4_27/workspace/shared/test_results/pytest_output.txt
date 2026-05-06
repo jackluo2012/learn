@@ -1,0 +1,3 @@
+Running pytest with -p vscode_pytest --collect-only --rootdir=/home/jackluo/my/learn/ai/crewai_mas_demo
+
+Please check the pytest output for collected tests.

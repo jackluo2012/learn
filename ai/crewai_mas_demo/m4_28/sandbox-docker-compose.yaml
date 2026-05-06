@@ -1,0 +1,37 @@
+# m4l28 专用沙盒配置
+# 第28课在 m4l27 基础上新增三层日志 + 两种复盘 Skills：
+#   - /mnt/shared/logs/       三层日志目录（L1/L2/L3）
+#   - /mnt/shared/proposals/  改进提案输出目录
+#   - self-retrospective / team-retrospective 两个 Skill 需要 ALIYUN_API_KEY 调用 LLM
+#
+# 使用方式：
+#   cd crewai_mas_demo/m4l28
+#   docker compose -f sandbox-docker-compose.yaml up -d   # 同时启动 manager + pm 沙盒
+
+version: "3.8"
+services:
+  aio-sandbox-manager:
+    image: ghcr.io/agent-infra/sandbox:latest
+    ports:
+      - "8027:8080"   # Manager 沙盒：http://localhost:8027/mcp
+    volumes:
+      - ./workspace/manager:/workspace:rw     # Manager 个人区（sessions、review_result.md）
+      - ./workspace/shared:/mnt/shared:rw     # 共享工作区（邮箱 + needs/ + design/ + sop/ + logs/ + proposals/）
+      - ../skills:/mnt/skills:ro              # 共享 skills 只读
+    environment:
+      - ALIYUN_API_KEY=${ALIYUN_API_KEY}      # team-retrospective skill 需要调用 LLM
+    security_opt:
+      - seccomp:unconfined
+
+  aio-sandbox-pm:
+    image: ghcr.io/agent-infra/sandbox:latest
+    ports:
+      - "8028:8080"   # PM 沙盒：http://localhost:8028/mcp
+    volumes:
+      - ./workspace/pm:/workspace:rw          # PM 个人区（sessions、草稿）
+      - ./workspace/shared:/mnt/shared:rw     # 共享工作区（只读 needs/ + 写 design/ + 邮箱 + logs/）
+      - ../skills:/mnt/skills:ro              # 共享 skills 只读
+    environment:
+      - ALIYUN_API_KEY=${ALIYUN_API_KEY}      # self-retrospective skill 需要调用 LLM
+    security_opt:
+      - seccomp:unconfined

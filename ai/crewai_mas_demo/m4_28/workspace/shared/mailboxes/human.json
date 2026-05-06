@@ -1,0 +1,12 @@
+[
+  {
+    "id": "msg-d15a5227",
+    "from": "manager",
+    "to": "human",
+    "type": "needs_confirm",
+    "subject": "需求文档（第1轮）待确认",
+    "content": "需求文档路径：/mnt/shared/needs/requirements.md\\n请查看并确认需求，或回复澄清问题的答案。",
+    "timestamp": "2026-04-19T07:59:20.945135+00:00",
+    "read": false
+  }
+]
