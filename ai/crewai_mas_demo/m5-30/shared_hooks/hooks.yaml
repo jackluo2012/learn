@@ -1,0 +1,19 @@
+hooks:
+  BEFORE_TURN:
+    - handler: structured_log.before_turn_handler
+  BEFORE_LLM:
+    - handler: structured_log.before_llm_handler
+    - handler: langfuse_trace.before_llm_handler
+  BEFORE_TOOL_CALL:
+    - handler: structured_log.before_tool_handler
+    - handler: langfuse_trace.before_tool_handler
+  AFTER_TOOL_CALL:
+    - handler: structured_log.after_tool_handler
+    - handler: langfuse_trace.after_tool_handler
+  AFTER_TURN:
+    - handler: structured_log.after_turn_handler
+    - handler: langfuse_trace.after_turn_handler
+  TASK_COMPLETE:
+    - handler: langfuse_trace.task_complete_handler
+  SESSION_END:
+    - handler: langfuse_trace.flush_and_close
