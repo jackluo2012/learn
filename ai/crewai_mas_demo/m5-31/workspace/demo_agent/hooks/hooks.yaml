@@ -1,0 +1,4 @@
+hooks:
+  TASK_COMPLETE:
+    - handler: task_audit.write_audit_entry
+      description: "写入 workspace 专属审计日志"

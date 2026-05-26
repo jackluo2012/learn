@@ -1,0 +1,43 @@
+hooks:
+  BEFORE_TURN:
+    - handler: structured_log.before_turn_handler
+  BEFORE_LLM:
+    - handler: structured_log.before_llm_handler
+    - handler: langfuse_trace.before_llm_handler
+  BEFORE_TOOL_CALL:
+    - handler: structured_log.before_tool_handler
+    - handler: langfuse_trace.before_tool_handler
+  AFTER_TOOL_CALL:
+    - handler: structured_log.after_tool_handler
+    - handler: langfuse_trace.after_tool_handler
+  AFTER_TURN:
+    - handler: structured_log.after_turn_handler
+    - handler: langfuse_trace.after_turn_handler
+  TASK_COMPLETE:
+    - handler: langfuse_trace.task_complete_handler
+  SESSION_END:
+    - handler: langfuse_trace.flush_and_close
+
+# 可靠性策略（有状态类，31课新增）
+# ⚠️ 顺序敏感：列表顺序 = 执行顺序
+# cost_guard 必须在 loop_detector 之前——已发生的成本必须先记录
+strategies:
+  - class: retry_tracker.RetryTracker
+    config:
+      max_retries: 3
+    hooks:
+      AFTER_TOOL_CALL: after_tool_handler
+
+  - class: cost_guard.CostGuard
+    config:
+      budget_usd: 1.0
+    hooks:
+      AFTER_TURN: after_turn_handler
+      BEFORE_TOOL_CALL: before_tool_handler
+
+  - class: loop_detector.LoopDetector
+    config:
+      threshold: 3
+    hooks:
+      AFTER_TOOL_CALL: after_tool_handler
+      AFTER_TURN: after_turn_handler    

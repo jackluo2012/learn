@@ -83,6 +83,8 @@ def build_skill_crew(
     skill_instructions: str,
     mount_desc: str = DEFAULT_SANDBOX_MOUNT_DESC,  # 💡 mount_desc 参数：默认保持 m2l16 行为，m3l20 传入新挂载描述
     mcp_url: str = SANDBOX_MCP_URL,  # 💡 mcp_url 参数：m4l25 Manager=8023, Dev=8024
+    step_callback=None,  # 💡 可选，m5l31+ 传入 adapter.make_sub_crew_step_callback()
+    task_callback=None,  # 💡 可选，m5l31+ 传入 adapter.make_task_callback()
 ) -> Crew:
     """
     Sub-Crew 工厂：为指定 Skill 构建一个在 AIO-Sandbox 中执行的 Crew。
@@ -123,12 +125,17 @@ def build_skill_crew(
         ),
         agent=skill_agent,
     )
-
+    extra = {}
+    if step_callback is not None:
+        extra["step_callback"] = step_callback
+    if task_callback is not None:
+        extra["task_callback"] = task_callback
     return Crew(
         agents=[skill_agent],
         tasks=[skill_task],
         process=Process.sequential,
         verbose=True,
+        **extra,
     )
 
 
@@ -192,12 +199,17 @@ class SkillLoaderTool(BaseTool):
     # Pydantic 会把普通 dict 属性当作模型字段，用 PrivateAttr 绕开
     _skill_registry: dict[str, Any] = PrivateAttr(default_factory=dict)
     _instruction_cache: dict[str, Any] = PrivateAttr(default_factory=dict)
-
+     # 💡 m5l31+：可选的可观测性回调，不传时行为与原来完全一致（向后兼容）
+    # 必须用 PrivateAttr，Callable 不可 JSON 序列化，放公开字段会导致 schema 导出崩溃
+    _step_callback: Any = PrivateAttr(default=None)
+    _task_callback: Any = PrivateAttr(default=None)
     def __init__(
         self,
         sandbox_mount_desc: str = DEFAULT_SANDBOX_MOUNT_DESC,
         sandbox_mcp_url: str = SANDBOX_MCP_URL,
         skills_dir: str = "",
+        step_callback=None,
+        task_callback=None,
     ):
         super().__init__(
             sandbox_mount_desc=sandbox_mount_desc,
@@ -207,6 +219,8 @@ class SkillLoaderTool(BaseTool):
         # 实例级属性，避免类级共享
         self._skill_registry = {}
         self._instruction_cache = {}
+        self._step_callback = step_callback
+        self._task_callback = task_callback
         self._build_description()
 
     def _effective_skills_dir(self) -> Path:
@@ -393,6 +407,8 @@ class SkillLoaderTool(BaseTool):
             skill_instructions=instructions,
             mount_desc=self.sandbox_mount_desc,  # 💡 透传挂载描述，m3l20 使用自定义挂载
             mcp_url=self.sandbox_mcp_url,        # 💡 透传 MCP URL，m4l25 各角色使用独立端口
+            step_callback=self._step_callback,       # 💡 Sub-Crew 可观测性：透传 step_callback
+            task_callback=self._task_callback,       # 💡 Sub-Crew 可观测性：透传 task_callback
         )
 
         # 💡 防止 CrewAI 模板引擎对 SKILL.md 中的 {xxx} 占位符报错
@@ -437,9 +453,51 @@ class SkillLoaderTool(BaseTool):
         if skill_name not in self._skill_registry:
             return f"错误：未找到 Skill '{skill_name}'，可用：{list(self._skill_registry.keys())}"
 
+        import contextvars
+        # 在 spawn 前读取当前 Langfuse parent span（graceful if not available）
+        # shared_hooks.langfuse_trace 仅在 m5l31+ 运行时 sys.path 中存在，
+        # 早期课程无此模块时静默降级。
+        try:
+            from shared_hooks.langfuse_trace import (
+                _get_langfuse_parent_span_id,
+                _reset_subcrew_state,
+                subcrew_cleanup,
+            )
+            parent_span_id = _get_langfuse_parent_span_id()
+            _langfuse_available = True
+        except ImportError:
+            parent_span_id = ""
+            _langfuse_available = False
+
+        ctx = contextvars.copy_context()
+        def _run_in_new_loop():
+            if _langfuse_available:
+                _reset_subcrew_state(parent_span_id)
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(
+                    self._execute_skill_async(skill_name, task_context)
+                )
+            finally:
+                if _langfuse_available:
+                    subcrew_cleanup()
+                pending = asyncio.all_tasks(loop)
+                for t in pending:
+                    t.cancel()
+                if pending:
+                    try:
+                        loop.run_until_complete(
+                            asyncio.wait_for(
+                                asyncio.gather(*pending, return_exceptions=True),
+                                timeout=10.0,
+                            )
+                        )
+                    except (asyncio.TimeoutError, Exception):
+                        pass
+                loop.close()
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             future = pool.submit(
-                asyncio.run,
-                self._execute_skill_async(skill_name, task_context),
+                ctx.run,
+                _run_in_new_loop
             )
-            return future.result()
+            return future.result(timeout=300)
