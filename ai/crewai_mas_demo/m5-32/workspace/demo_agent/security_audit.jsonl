@@ -1,0 +1,26 @@
+{"timestamp": "2026-05-31T09:55:34.145434+00:00", "security_event": "session_summary", "session_id": "sess_20260531_095513", "total_security_events": 0, "events_by_type": {}}
+{"timestamp": "2026-05-31T10:00:10.763236+00:00", "security_event": "session_summary", "session_id": "sess_20260531_100009", "total_security_events": 0, "events_by_type": {}}
+{"timestamp": "2026-05-31T10:05:10.569145+00:00", "security_event": "session_summary", "session_id": "sess_20260531_100509", "total_security_events": 0, "events_by_type": {}}
+{"timestamp": "2026-05-31T10:08:10.084955+00:00", "security_event": "session_summary", "session_id": "sess_20260531_100808", "total_security_events": 0, "events_by_type": {}}
+{"timestamp": "2026-05-31T10:11:40.887978+00:00", "security_event": "permission_ask", "tool": "skill_loader"}
+{"timestamp": "2026-05-31T10:11:41.759704+00:00", "security_event": "session_summary", "session_id": "sess_20260531_101132", "total_security_events": 1, "events_by_type": {"permission_ask": 1}}
+{"timestamp": "2026-05-31T10:11:50.244602+00:00", "security_event": "permission_ask", "tool": "skill_loader"}
+{"timestamp": "2026-05-31T10:11:55.582587+00:00", "security_event": "permission_ask", "tool": "skill_loader"}
+{"timestamp": "2026-05-31T10:11:56.794328+00:00", "security_event": "session_summary", "session_id": "sess_20260531_101145", "total_security_events": 2, "events_by_type": {"permission_ask": 2}}
+{"timestamp": "2026-05-31T10:12:13.956715+00:00", "security_event": "permission_ask", "tool": "skill_loader"}
+{"timestamp": "2026-05-31T10:12:21.703815+00:00", "security_event": "permission_ask", "tool": "skill_loader"}
+{"timestamp": "2026-05-31T10:12:22.958866+00:00", "security_event": "session_summary", "session_id": "sess_20260531_101208", "total_security_events": 2, "events_by_type": {"permission_ask": 2}}
+{"timestamp": "2026-05-31T10:12:30.969664+00:00", "security_event": "session_summary", "session_id": "sess_20260531_101229", "total_security_events": 0, "events_by_type": {}}
+{"timestamp": "2026-05-31T10:22:35.656282+00:00", "security_event": "permission_ask", "tool": "skill_loader"}
+{"timestamp": "2026-05-31T10:22:50.488004+00:00", "security_event": "session_summary", "session_id": "sess_20260531_102233", "total_security_events": 1, "events_by_type": {"permission_ask": 1}}
+{"timestamp": "2026-05-31T10:22:57.750654+00:00", "security_event": "permission_ask", "tool": "skill_loader"}
+{"timestamp": "2026-05-31T10:23:13.640311+00:00", "security_event": "session_summary", "session_id": "sess_20260531_102255", "total_security_events": 1, "events_by_type": {"permission_ask": 1}}
+{"timestamp": "2026-05-31T10:23:27.415866+00:00", "security_event": "permission_ask", "tool": "skill_loader"}
+{"timestamp": "2026-05-31T10:24:35.443179+00:00", "security_event": "session_summary", "session_id": "sess_20260531_102322", "total_security_events": 1, "events_by_type": {"permission_ask": 1}}
+{"timestamp": "2026-05-31T10:24:51.273020+00:00", "security_event": "permission_ask", "tool": "skill_loader"}
+{"timestamp": "2026-05-31T10:25:00.022023+00:00", "security_event": "permission_ask", "tool": "skill_loader"}
+{"timestamp": "2026-05-31T10:26:04.562508+00:00", "security_event": "session_summary", "session_id": "sess_20260531_102443", "total_security_events": 2, "events_by_type": {"permission_ask": 2}}
+{"timestamp": "2026-05-31T10:26:18.105351+00:00", "security_event": "permission_ask", "tool": "skill_loader"}
+{"timestamp": "2026-05-31T10:26:28.343211+00:00", "security_event": "permission_ask", "tool": "skill_loader"}
+{"timestamp": "2026-05-31T10:27:28.858814+00:00", "security_event": "session_summary", "session_id": "sess_20260531_102609", "total_security_events": 2, "events_by_type": {"permission_ask": 2}}
+{"timestamp": "2026-05-31T10:27:49.573520+00:00", "security_event": "permission_ask", "tool": "skill_loader"}

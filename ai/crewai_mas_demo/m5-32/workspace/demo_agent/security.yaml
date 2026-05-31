@@ -1,0 +1,12 @@
+# 权限策略：Deny > Ask > Allow
+# 仿 Claude Code permissions.ts 的 Deny > Ask > Allow 优先级
+
+permissions:
+  default: ask    # 未列出的工具默认需要确认
+
+  tools:
+    knowledge_search: allow      # 只读搜索，安全
+    safe_calculator: allow       # 纯计算，无副作用
+    file_reader: ask             # 读文件需确认（可能涉及敏感路径）
+    shell_executor: deny         # 任意命令执行，禁止
+    email_sender: deny           # 外发消息，禁止（防数据外泄）
